@@ -47,8 +47,10 @@ Par Planner is a React Native mobile app that lets golfers plan their round hole
 Set once during onboarding, editable at any time.
 
 **Build a Bag**
-- Player selects which clubs they carry (e.g. Driver, 3W, 5i–PW, SW, Putter)
-- For each club: carry distance in yards (or metres)
+- Starts with a sensible default bag (Driver, 3W, 5W, 4i–9i, PW, SW, LW, Putter)
+- Player taps to select or deselect each club — only clubs in their actual bag are used for AI recommendations
+- Additional common clubs available to add (e.g. 2i, 3i, 4W, 7W, 60° wedge, chipper, hybrid options)
+- For each selected club: carry distance in yards (or metres)
 
 **Shot Tendency**
 - Single selection: Straight / Slight Fade / Slice / Slight Draw / Draw / Hook
@@ -145,6 +147,9 @@ On-Course Mode → reads from AsyncStorage only (offline)
 
 **On-course AI (tee position refinement)**
 GPS detects the player is near the tee. Player can request an updated recommendation accounting for actual tee marker position that day (tee boxes move). Requires on-course network access — breaks the offline-first rule, so this needs careful UX design in its own phase.
+
+**Into the green**
+Approach shot strategy for shots into greens with hazards (bunkers, water, false edges). Gives the player a recommended landing zone, pin position considerations, and which side to miss on. Builds on the tee strategy foundation once that's proven.
 
 **Web planning portal**
 Responsive web app for planning on a laptop with a larger screen. Syncs plans to the mobile app.
