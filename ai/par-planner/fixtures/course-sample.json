@@ -1,0 +1,75 @@
+{
+  "id": "fixture-course-001",
+  "name": "Old Course",
+  "club": "St Andrews Links",
+  "location": "St Andrews, Scotland",
+  "lat": 56.3432,
+  "lng": -2.8028,
+  "tees": [
+    {
+      "name": "White",
+      "holes": [
+        {
+          "number": 1,
+          "par": 4,
+          "distanceYards": 376,
+          "strokeIndex": 11,
+          "geodata": {
+            "teeBox": { "lat": 56.3401, "lng": -2.8021 },
+            "fairwayPolygon": [
+              { "lat": 56.3401, "lng": -2.8021 },
+              { "lat": 56.3408, "lng": -2.8025 },
+              { "lat": 56.3415, "lng": -2.8020 },
+              { "lat": 56.3408, "lng": -2.8016 }
+            ],
+            "greenPolygon": [
+              { "lat": 56.3432, "lng": -2.8028 },
+              { "lat": 56.3433, "lng": -2.8025 },
+              { "lat": 56.3435, "lng": -2.8027 },
+              { "lat": 56.3434, "lng": -2.8030 }
+            ],
+            "hazards": [
+              {
+                "type": "bunker",
+                "label": "Swilcan Bunker",
+                "polygon": [
+                  { "lat": 56.3420, "lng": -2.8019 },
+                  { "lat": 56.3421, "lng": -2.8018 },
+                  { "lat": 56.3421, "lng": -2.8020 },
+                  { "lat": 56.3420, "lng": -2.8021 }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "number": 2,
+          "par": 4,
+          "distanceYards": 411,
+          "strokeIndex": 3,
+          "geodata": {
+            "teeBox": { "lat": 56.3440, "lng": -2.8035 },
+            "fairwayPolygon": null,
+            "greenPolygon": [
+              { "lat": 56.3460, "lng": -2.8040 },
+              { "lat": 56.3461, "lng": -2.8037 },
+              { "lat": 56.3463, "lng": -2.8039 },
+              { "lat": 56.3462, "lng": -2.8042 }
+            ],
+            "hazards": [
+              {
+                "type": "water",
+                "label": "Swilcan Burn",
+                "polygon": [
+                  { "lat": 56.3435, "lng": -2.8030 },
+                  { "lat": 56.3436, "lng": -2.8028 },
+                  { "lat": 56.3437, "lng": -2.8031 }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

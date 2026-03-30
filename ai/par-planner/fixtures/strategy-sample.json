@@ -1,0 +1,16 @@
+[
+  {
+    "hole": 1,
+    "teeClub": "Driver",
+    "target": "Centre fairway, short of Swilcan Bunker at 220 yds",
+    "avoid": "Swilcan Bunker right at 220 yds, rough left",
+    "reasoning": "Wide fairway but the bunker penalises anything right of centre. Your draw should track centre-left naturally."
+  },
+  {
+    "hole": 2,
+    "teeClub": "3 Wood",
+    "target": "Left side of fairway to open up the green",
+    "avoid": "Swilcan Burn short of the green, rough right",
+    "reasoning": "The burn runs across in front of the green. A 3 Wood leaves a full approach distance and keeps you clear of the water."
+  }
+]
