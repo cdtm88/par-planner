@@ -29,7 +29,7 @@ export default function HomeScreen() {
         <Text style={styles.sectionLabel}>YOUR PLANS</Text>
       )}
 
-      <Pressable style={styles.cta} onPress={() => {}}>
+      <Pressable style={styles.cta} onPress={() => router.push('/search')}>
         <Text style={styles.ctaText}>Plan New Round</Text>
       </Pressable>
     </View>

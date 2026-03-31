@@ -14,6 +14,13 @@ export interface Club {
   selected: boolean;
 }
 
+export interface CourseSearchResult {
+  id: string;
+  name: string;
+  club: string;
+  location: string;
+}
+
 export interface PlayerProfile {
   handicap: number | null;
   shotTendency: ShotTendency;

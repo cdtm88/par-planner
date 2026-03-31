@@ -1,0 +1,20 @@
+[
+  {
+    "id": "fixture-course-001",
+    "name": "Old Course",
+    "club": "St Andrews Links",
+    "location": "St Andrews, Scotland"
+  },
+  {
+    "id": "fixture-course-002",
+    "name": "Carnoustie Championship",
+    "club": "Carnoustie Golf Links",
+    "location": "Carnoustie, Scotland"
+  },
+  {
+    "id": "fixture-course-003",
+    "name": "Royal Troon Old Course",
+    "club": "Royal Troon",
+    "location": "Troon, Scotland"
+  }
+]
