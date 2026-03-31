@@ -14,6 +14,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ title: 'Par Planner' }} />
         <Stack.Screen name="onboarding" options={{ title: 'Build Your Profile' }} />
+        <Stack.Screen name="search" options={{ title: 'Find a Course' }} />
       </Stack>
     </>
   );
