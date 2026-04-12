@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -25,7 +25,6 @@ export default function OnCourseScreen() {
   const { width, height } = useWindowDimensions();
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const listRef = useRef<FlatList>(null);
 
   const plan = plans.find((p) => p.id === id);
 
@@ -51,8 +50,6 @@ export default function OnCourseScreen() {
   const mapHeight = height * 0.45;
   const mapWidth = width * 0.45;
 
-  const current = slides[currentIndex];
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -68,65 +65,68 @@ export default function OnCourseScreen() {
         </View>
       </View>
 
-      {/* Active slide content — renders only the current hole */}
-      <View style={styles.slideContent}>
-        {/* Hole header */}
-        <View style={styles.holeHeader}>
-          <Text style={styles.holeNumber}>HOLE {current.holePlan.holeNumber}</Text>
-          <Text style={styles.holePar}>PAR {current.hole?.par ?? '–'}</Text>
-          {current.hole && (
-            <Text style={styles.holeDistance}>{current.hole.distanceYards} YDS</Text>
-          )}
-        </View>
-
-        {/* Split view: map left, strategy right */}
-        <View style={styles.splitRow}>
-          <HoleMap
-            geodata={current.hole?.geodata ?? null}
-            width={mapWidth}
-            height={mapHeight}
-          />
-
-          <View style={[styles.strategyCard, { width: width - mapWidth - 24 }]}>
-            <View style={styles.strategyRow}>
-              <Text style={styles.strategyLabel}>CLUB</Text>
-              <Text style={styles.strategyValue}>{current.holePlan.teeClub}</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.strategyRow}>
-              <Text style={styles.strategyLabel}>AIM</Text>
-              <Text style={styles.strategyValue}>{current.holePlan.target}</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.strategyRow}>
-              <Text style={styles.strategyLabel}>AVOID</Text>
-              <Text style={[styles.strategyValue, styles.avoidText]}>
-                {current.holePlan.avoid}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Reasoning */}
-        <View style={styles.reasoningCard}>
-          <Text style={styles.reasoningText}>{current.holePlan.reasoning}</Text>
-        </View>
-      </View>
-
-      {/* Invisible swipe strip — FlatList handles page detection only */}
+      {/* Swipeable hole slides */}
       <FlatList
-        ref={listRef}
         data={slides}
         keyExtractor={(_, i) => String(i)}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        style={styles.swipeStrip}
         onMomentumScrollEnd={(e) => {
           const index = Math.round(e.nativeEvent.contentOffset.x / width);
           setCurrentIndex(index);
         }}
-        renderItem={() => <View style={{ width }} />}
+        renderItem={({ item }: { item: HoleSlide }) => {
+          const { holePlan, hole } = item;
+          return (
+            <View
+              testID={`slide-${holePlan.holeNumber}`}
+              style={[styles.slide, { width }]}
+            >
+              {/* Hole header */}
+              <View style={styles.holeHeader}>
+                <Text style={styles.holeNumber}>HOLE {holePlan.holeNumber}</Text>
+                <Text style={styles.holePar}>PAR {hole?.par ?? '–'}</Text>
+                {hole && (
+                  <Text style={styles.holeDistance}>{hole.distanceYards} YDS</Text>
+                )}
+              </View>
+
+              {/* Split view: map left, strategy right */}
+              <View style={styles.splitRow}>
+                <HoleMap
+                  geodata={hole?.geodata ?? null}
+                  width={mapWidth}
+                  height={mapHeight}
+                />
+
+                <View style={[styles.strategyCard, { width: width - mapWidth - 24 }]}>
+                  <View style={styles.strategyRow}>
+                    <Text style={styles.strategyLabel}>CLUB</Text>
+                    <Text style={styles.strategyValue}>{holePlan.teeClub}</Text>
+                  </View>
+                  <View style={styles.divider} />
+                  <View style={styles.strategyRow}>
+                    <Text style={styles.strategyLabel}>AIM</Text>
+                    <Text style={styles.strategyValue}>{holePlan.target}</Text>
+                  </View>
+                  <View style={styles.divider} />
+                  <View style={styles.strategyRow}>
+                    <Text style={styles.strategyLabel}>AVOID</Text>
+                    <Text style={[styles.strategyValue, styles.avoidText]}>
+                      {holePlan.avoid}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Reasoning */}
+              <View style={styles.reasoningCard}>
+                <Text style={styles.reasoningText}>{holePlan.reasoning}</Text>
+              </View>
+            </View>
+          );
+        }}
       />
     </View>
   );
@@ -185,8 +185,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 1,
   },
-  slideContent: {
-    flex: 1,
+  slide: {
     padding: 16,
   },
   holeHeader: {
@@ -256,9 +255,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontStyle: 'italic',
-  },
-  swipeStrip: {
-    height: 48,
-    flexGrow: 0,
   },
 });

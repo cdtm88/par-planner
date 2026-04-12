@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, within } from '@testing-library/react-native';
 import OnCourseScreen from '../../app/on-course';
 import { usePlanStore } from '../../src/store/planStore';
 import { useCourseStore } from '../../src/store/courseStore';
@@ -107,17 +107,19 @@ describe('OnCourseScreen', () => {
   });
 
   it('shows hole 1 by default with correct header info', () => {
-    const { getByText } = render(<OnCourseScreen />);
-    expect(getByText('HOLE 1')).toBeTruthy();
-    expect(getByText('PAR 4')).toBeTruthy();
-    expect(getByText('376 YDS')).toBeTruthy();
+    const { getByTestId } = render(<OnCourseScreen />);
+    const slide1 = getByTestId('slide-1');
+    expect(within(slide1).getByText('HOLE 1')).toBeTruthy();
+    expect(within(slide1).getByText('PAR 4')).toBeTruthy();
+    expect(within(slide1).getByText('376 YDS')).toBeTruthy();
   });
 
   it('shows the AI strategy for hole 1', () => {
-    const { getByText } = render(<OnCourseScreen />);
-    expect(getByText('Driver')).toBeTruthy();
-    expect(getByText('Centre fairway, short of bunker')).toBeTruthy();
-    expect(getByText('Swilcan Bunker right at 220 yds')).toBeTruthy();
+    const { getByTestId } = render(<OnCourseScreen />);
+    const slide1 = getByTestId('slide-1');
+    expect(within(slide1).getByText('Driver')).toBeTruthy();
+    expect(within(slide1).getByText('Centre fairway, short of bunker')).toBeTruthy();
+    expect(within(slide1).getByText('Swilcan Bunker right at 220 yds')).toBeTruthy();
   });
 
   it('shows course name in subheader', () => {
