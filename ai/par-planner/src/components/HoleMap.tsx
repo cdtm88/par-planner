@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   placeholderText: {
-    color: '#555',
+    color: '#aaa',
     fontSize: 13,
   },
 });
