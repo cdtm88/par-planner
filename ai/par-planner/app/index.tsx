@@ -33,6 +33,7 @@ export default function HomeScreen() {
             renderItem={({ item }: { item: GamePlan }) => (
               <Pressable
                 style={styles.planRow}
+                testID={`plan-row-${item.id}`}
                 onPress={() =>
                   router.push({ pathname: '/on-course', params: { id: item.id } })
                 }

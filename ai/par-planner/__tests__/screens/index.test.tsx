@@ -54,8 +54,8 @@ describe('HomeScreen', () => {
 
   it('navigates to on-course screen when a plan row is tapped', () => {
     usePlanStore.setState({ plans: [completedPlan] });
-    const { getByText } = render(<HomeScreen />);
-    fireEvent.press(getByText('St Andrews Links'));
+    const { getByTestId } = render(<HomeScreen />);
+    fireEvent.press(getByTestId('plan-row-plan-001'));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/on-course',
       params: { id: 'plan-001' },
