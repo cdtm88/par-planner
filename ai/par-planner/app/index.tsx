@@ -1,8 +1,14 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useProfileStore } from '../src/store/profileStore';
 import { usePlanStore } from '../src/store/planStore';
+import { GamePlan } from '../src/types';
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 export default function HomeScreen() {
   const { profile } = useProfileStore();
@@ -18,15 +24,40 @@ export default function HomeScreen() {
         </Pressable>
       )}
 
-      {plans.length === 0 ? (
+      {plans.length > 0 && (
+        <>
+          <Text style={styles.sectionLabel}>YOUR PLANS</Text>
+          <FlatList
+            data={plans}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }: { item: GamePlan }) => (
+              <Pressable
+                style={styles.planRow}
+                onPress={() =>
+                  router.push({ pathname: '/on-course', params: { id: item.id } })
+                }
+              >
+                <View style={styles.planRowLeft}>
+                  <Text style={styles.planName}>{item.courseName}</Text>
+                  <Text style={styles.planMeta}>
+                    {item.tee} · {formatDate(item.createdAt)}
+                  </Text>
+                </View>
+                <Text style={styles.planArrow}>→</Text>
+              </Pressable>
+            )}
+            style={styles.list}
+          />
+        </>
+      )}
+
+      {plans.length === 0 && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>No rounds planned yet</Text>
           <Text style={styles.emptySubtitle}>
             Search for a course to create your first game plan
           </Text>
         </View>
-      ) : (
-        <Text style={styles.sectionLabel}>YOUR PLANS</Text>
       )}
 
       <Pressable style={styles.cta} onPress={() => router.push('/search')}>
@@ -54,6 +85,42 @@ const styles = StyleSheet.create({
     color: '#22c55e',
     fontSize: 14,
   },
+  sectionLabel: {
+    color: '#666',
+    fontSize: 11,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  list: {
+    flex: 1,
+  },
+  planRow: {
+    backgroundColor: '#16213e',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#2d2d4e',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  planRowLeft: {
+    gap: 2,
+  },
+  planName: {
+    color: '#f0f0f0',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  planMeta: {
+    color: '#ccc',
+    fontSize: 13,
+  },
+  planArrow: {
+    color: '#22c55e',
+    fontSize: 18,
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -69,12 +136,6 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 14,
     textAlign: 'center',
-  },
-  sectionLabel: {
-    color: '#666',
-    fontSize: 11,
-    letterSpacing: 1.5,
-    marginBottom: 12,
   },
   cta: {
     backgroundColor: '#22c55e',
