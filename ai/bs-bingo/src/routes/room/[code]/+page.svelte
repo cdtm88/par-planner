@@ -32,6 +32,17 @@
 
   onMount(() => {
     store = createRoomStore(data.code);
+
+    // `onDestroy` fires for SPA navigations but NOT when a tab is closed on mobile.
+    // `pagehide` fires reliably on iOS Safari for both tab-close and navigation.
+    function handlePageHide() {
+      store?.disconnect();
+    }
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+    };
   });
 
   onDestroy(() => {
