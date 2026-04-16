@@ -3,17 +3,16 @@
   import "@fontsource-variable/inter";
   import "@fontsource-variable/space-grotesk";
   import Banner from "$lib/components/Banner.svelte";
+  import { connection } from "$lib/stores/room.svelte";
   import { Loader2 } from "lucide-svelte";
-  // Plan 04 will export `connectionStatus` from $lib/stores/room.svelte.ts
-  // and set visible={connectionStatus === "reconnecting"}. For now: invisible.
   let { children } = $props();
-  let reconnectingVisible = $state(false);
+  const visible = $derived(connection.status === "reconnecting");
 </script>
 
-<Banner visible={reconnectingVisible}>
+<Banner {visible}>
   {#snippet children()}
     <Loader2 size={16} class="animate-spin motion-reduce:animate-none" />
-    Reconnecting…
+    <span>Reconnecting…</span>
   {/snippet}
 </Banner>
 {@render children()}

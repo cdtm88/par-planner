@@ -1,35 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Track PartySocket instances for test access
-let lastInstance: MockPartySocket | null = null;
+// vi.hoisted runs before vi.mock factory, solving hoisting issues
+const { MockPartySocket, getLastInstance, resetInstance } = vi.hoisted(() => {
+  let _lastInstance: any = null;
 
-class MockPartySocket {
-  private listeners: Record<string, ((e: any) => void)[]> = {};
-  lastSent: string | null = null;
-  closed = false;
-  opts: any;
+  class MockPartySocket {
+    listeners: Record<string, ((e: any) => void)[]> = {};
+    lastSent: string | null = null;
+    closed = false;
+    opts: any;
 
-  constructor(opts: any) {
-    this.opts = opts;
-    lastInstance = this;
+    constructor(opts: any) {
+      this.opts = opts;
+      _lastInstance = this;
+    }
+
+    addEventListener(evt: string, fn: (e: any) => void) {
+      (this.listeners[evt] ??= []).push(fn);
+    }
+
+    send(data: string) {
+      this.lastSent = data;
+    }
+
+    close() {
+      this.closed = true;
+    }
+
+    emit(evt: string, data: any) {
+      (this.listeners[evt] ?? []).forEach((fn) => fn(data));
+    }
   }
 
-  addEventListener(evt: string, fn: (e: any) => void) {
-    (this.listeners[evt] ??= []).push(fn);
-  }
-
-  send(data: string) {
-    this.lastSent = data;
-  }
-
-  close() {
-    this.closed = true;
-  }
-
-  emit(evt: string, data: any) {
-    (this.listeners[evt] ?? []).forEach((fn) => fn(data));
-  }
-}
+  return {
+    MockPartySocket,
+    getLastInstance: () => _lastInstance as InstanceType<typeof MockPartySocket> | null,
+    resetInstance: () => { _lastInstance = null; },
+  };
+});
 
 vi.mock("partysocket", () => ({
   PartySocket: MockPartySocket,
@@ -53,7 +61,7 @@ describe("PARTY_NAME", () => {
 describe("createRoomStore", () => {
   beforeEach(() => {
     sessionStorage.clear();
-    lastInstance = null;
+    resetInstance();
   });
 
   it("initial status is 'connecting'", () => {
@@ -68,21 +76,23 @@ describe("createRoomStore", () => {
 
   it("creates a PartySocket with party: PARTY_NAME and room: code", () => {
     createRoomStore("ABC123");
-    expect(lastInstance).not.toBeNull();
-    expect(lastInstance!.opts.party).toBe("game-room");
-    expect(lastInstance!.opts.room).toBe("ABC123");
+    const ws = getLastInstance();
+    expect(ws).not.toBeNull();
+    expect(ws!.opts.party).toBe("game-room");
+    expect(ws!.opts.room).toBe("ABC123");
   });
 
   it("status becomes 'open' and sends hello when open fires", () => {
     const store = createRoomStore("ABC123");
     expect(store.status).toBe("connecting");
 
-    lastInstance!.emit("open", {});
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
 
     expect(store.status).toBe("open");
-    expect(lastInstance!.lastSent).not.toBeNull();
+    expect(ws.lastSent).not.toBeNull();
 
-    const sent = JSON.parse(lastInstance!.lastSent!);
+    const sent = JSON.parse(ws.lastSent!);
     expect(sent.type).toBe("hello");
     expect(sent.playerId).toBe("test-player-id");
     expect(sent.displayName).toBe("Tester");
@@ -90,7 +100,8 @@ describe("createRoomStore", () => {
 
   it("populates state when roomState message is received", () => {
     const store = createRoomStore("ABC123");
-    lastInstance!.emit("open", {});
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
 
     const roomState = {
       code: "ABC123",
@@ -101,7 +112,7 @@ describe("createRoomStore", () => {
       ],
     };
 
-    lastInstance!.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
+    ws.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
 
     expect(store.state).not.toBeNull();
     expect(store.state!.code).toBe("ABC123");
@@ -110,9 +121,9 @@ describe("createRoomStore", () => {
 
   it("appends a player when playerJoined message is received", () => {
     const store = createRoomStore("ABC123");
-    lastInstance!.emit("open", {});
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
 
-    // Set initial state first
     const roomState = {
       code: "ABC123",
       phase: "lobby",
@@ -121,12 +132,11 @@ describe("createRoomStore", () => {
         { playerId: "test-player-id", displayName: "Tester", isHost: true, joinedAt: 1000 },
       ],
     };
-    lastInstance!.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
+    ws.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
     expect(store.state!.players).toHaveLength(1);
 
-    // Now emit playerJoined
     const newPlayer = { playerId: "player-2", displayName: "Bob", isHost: false, joinedAt: 2000 };
-    lastInstance!.emit("message", { data: JSON.stringify({ type: "playerJoined", player: newPlayer }) });
+    ws.emit("message", { data: JSON.stringify({ type: "playerJoined", player: newPlayer }) });
 
     expect(store.state!.players).toHaveLength(2);
     expect(store.state!.players[1].playerId).toBe("player-2");
@@ -134,7 +144,8 @@ describe("createRoomStore", () => {
 
   it("removes a player when playerLeft message is received", () => {
     const store = createRoomStore("ABC123");
-    lastInstance!.emit("open", {});
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
 
     const roomState = {
       code: "ABC123",
@@ -145,10 +156,10 @@ describe("createRoomStore", () => {
         { playerId: "player-2", displayName: "Bob", isHost: false, joinedAt: 2000 },
       ],
     };
-    lastInstance!.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
+    ws.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
     expect(store.state!.players).toHaveLength(2);
 
-    lastInstance!.emit("message", { data: JSON.stringify({ type: "playerLeft", playerId: "player-2" }) });
+    ws.emit("message", { data: JSON.stringify({ type: "playerLeft", playerId: "player-2" }) });
 
     expect(store.state!.players).toHaveLength(1);
     expect(store.state!.players[0].playerId).toBe("test-player-id");
@@ -156,27 +167,28 @@ describe("createRoomStore", () => {
 
   it("status becomes 'reconnecting' when close fires", () => {
     const store = createRoomStore("ABC123");
-    lastInstance!.emit("open", {});
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
     expect(store.status).toBe("open");
 
-    lastInstance!.emit("close", {});
+    ws.emit("close", {});
     expect(store.status).toBe("reconnecting");
   });
 
   it("drops messages with unknown shape (invalid Valibot parse)", () => {
     const store = createRoomStore("ABC123");
-    lastInstance!.emit("open", {});
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
 
-    // This message has no valid 'type' field matching ServerMessage
-    lastInstance!.emit("message", { data: JSON.stringify({ type: "unknown_type", garbage: true }) });
+    ws.emit("message", { data: JSON.stringify({ type: "unknown_type", garbage: true }) });
 
-    // State should remain null (no state change for bad message)
     expect(store.state).toBeNull();
   });
 
   it("disconnect() closes the WebSocket", () => {
     const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
     store.disconnect();
-    expect(lastInstance!.closed).toBe(true);
+    expect(ws.closed).toBe(true);
   });
 });
