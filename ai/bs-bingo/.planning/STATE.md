@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-04-16T14:55:21.836Z"
-last_activity: 2026-04-16 -- Phase 1 planning complete
+last_updated: "2026-04-16T18:20:20.641Z"
+last_activity: 2026-04-16
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 0
-  percent: 0
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-16)
 
 **Core value:** Players can join a live game, mark off buzzwords as they're said, and race to be the first to call "Bingo"
-**Current focus:** Phase 1 — Foundation (Transport, Room, Lobby, Presence)
+**Current focus:** Phase 2 — lobby-gameplay-word-submission-start
 
 ## Current Position
 
-Phase: 1 of 5 (Foundation — Transport, Room, Lobby, Presence)
-Plan: 0 of TBD in current phase
-Status: Ready to execute
-Last activity: 2026-04-16 -- Phase 1 planning complete
+Phase: 2 (lobby-gameplay-word-submission-start) — READY TO PLAN
+Plan: Not started
+Status: Phase 1 complete, ready to plan Phase 2
+Last activity: 2026-04-16
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 5
 - Average duration: —
 - Total execution time: 0 hours
 
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0%
 | 3. Board & Mark Loop | 0 | — | — |
 | 4. Win & Play-Again | 0 | — | — |
 | 5. Resilience | 0 | — | — |
+| 01 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -64,10 +65,10 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Init: Browser-only, no native app — pending validation in Phase 1
-- Init: Anonymous sessions, no auth — pending validation in Phase 1
-- Init: Real-time via WebSockets — pending validation in Phase 1
-- Research: Stack direction is SvelteKit + PartyServer on Cloudflare Durable Objects with WebSocket Hibernation (see research/SUMMARY.md)
+- Phase 1: Stack validated — SvelteKit + PartyServer + Cloudflare DO, 79 tests green
+- Phase 1: Browser-only + anonymous sessions confirmed working on mobile
+- Phase 1: pagehide listener required for clean WS disconnect on iOS Safari
+- Phase 1: POST /create + guarded /exists pattern for room lifecycle
 
 ### Pending Todos
 
@@ -88,6 +89,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-16T14:24:03.612Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-foundation-transport-room-lobby-presence/01-UI-SPEC.md
+Last session: 2026-04-16
+Stopped at: Phase 1 complete, ready to plan Phase 2
+Resume file: None

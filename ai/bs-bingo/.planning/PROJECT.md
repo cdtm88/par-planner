@@ -12,12 +12,11 @@ Players can join a live game, mark off buzzwords as they're said, and race to be
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Users can create a new game session and share a join code/link — Phase 1
+- ✓ Users can join an existing game session via code or link — Phase 1
 
 ### Active
 
-- [ ] Users can create a new game session and share a join code/link
-- [ ] Users can join an existing game session via code or link
 - [ ] Players can submit words they expect to hear before the game starts
 - [ ] Host can start the game when ready
 - [ ] Each player receives a uniquely generated bingo board with submitted words in random positions plus blank spaces
@@ -50,9 +49,13 @@ Players can join a live game, mark off buzzwords as they're said, and race to be
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Browser-only, no native app | Minimizes friction — open a link during a meeting and play | — Pending |
-| Anonymous sessions, no auth | No signup barrier; games are ephemeral | — Pending |
-| Real-time via WebSockets | Words marked off must propagate to all players live | — Pending |
+| Browser-only, no native app | Minimizes friction — open a link during a meeting and play | ✓ Validated Phase 1 |
+| Anonymous sessions, no auth | No signup barrier; games are ephemeral | ✓ Validated Phase 1 — sessionStorage identity works cleanly |
+| Real-time via WebSockets | Words marked off must propagate to all players live | ✓ Validated Phase 1 — sub-1s presence updates confirmed on mobile |
+| SvelteKit + PartyServer + Cloudflare DO | Full stack chosen and validated | ✓ Validated Phase 1 — 79 tests green, e2e passing |
+| POST /create + guarded /exists for room lifecycle | DOs always initialize on first stub.fetch(); need explicit flag | ✓ Phase 1 — prevents ghost rooms and false 200s |
+| pagehide listener for WebSocket disconnect | onDestroy doesn't fire on tab close; iOS Safari holds WS open | ✓ Phase 1 — confirmed fix on real device |
+| post-build patch-worker.mjs | adapter-cloudflare overwrites src/worker.ts on every build | ✓ Phase 1 — script re-injects GameRoom export after build |
 
 ## Evolution
 
@@ -72,4 +75,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 after initialization*
+*Last updated: 2026-04-16 after Phase 1*
