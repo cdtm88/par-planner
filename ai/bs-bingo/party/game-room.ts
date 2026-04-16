@@ -35,7 +35,8 @@ export class GameRoom extends Server<Env> {
   // This distinguishes "room was formally created" from "DO was just instantiated".
   #active = false;
 
-  onStart() {
+  async onStart() {
+    this.#active = (await this.ctx.storage.get<boolean>("active")) ?? false;
     this.#createdAt = Date.now();
     // Schedule idle reaper — fires after IDLE_TTL_MS with no activity.
     this.ctx.storage.setAlarm(Date.now() + IDLE_TTL_MS);
@@ -156,6 +157,7 @@ export class GameRoom extends Server<Env> {
         });
       }
       this.#active = true;
+      void this.ctx.storage.put("active", true);
       return new Response(JSON.stringify({ created: true }), {
         headers: { "Content-Type": "application/json" },
       });

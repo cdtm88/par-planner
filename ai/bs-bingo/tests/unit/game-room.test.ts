@@ -59,6 +59,8 @@ vi.mock("partyserver", () => {
         storage: {
           setAlarm: vi.fn(),
           deleteAll: vi.fn().mockResolvedValue(undefined),
+          get: vi.fn().mockResolvedValue(undefined),
+          put: vi.fn().mockResolvedValue(undefined),
         },
       };
     }
