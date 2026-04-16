@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg:            #0F0F14;
+  --color-surface:       #1A1A23;
+  --color-divider:       #2A2A36;
+  --color-accent:        #F5D547;
+  --color-destructive:   #F87171;
+  --color-ink-primary:   #F5F5F7;
+  --color-ink-secondary: #A1A1AA;
+  --color-ink-disabled:  #52525B;
+  --color-ink-inverse:   #0F0F14;
+  --font-sans:    "Inter Variable", system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", "Inter Variable", sans-serif;
+}
