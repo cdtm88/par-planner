@@ -34,3 +34,7 @@ export const ServerMessage = v.variant("type", [
   v.object({ type: v.literal("pong") }),
 ]);
 export type ServerMessage = v.InferOutput<typeof ServerMessage>;
+
+// Kebab-cased binding name — must match wrangler.jsonc durable_objects binding name.
+// See RESEARCH.md Pitfall 6.
+export const PARTY_NAME = "game-room";
