@@ -241,12 +241,36 @@ describe("GameRoom", () => {
   });
 
   // -------------------------------------------------------------------------
-  // onRequest → /exists returns 200 JSON
+  // onRequest → POST /create activates room; GET /exists guards on #active
   // -------------------------------------------------------------------------
 
-  it("onRequest at /exists returns 200 with exists and playerCount", async () => {
+  it("onRequest POST /create returns 200 and activates room", async () => {
+    const req = new Request("https://do/parties/game-room/TESTAB/create", { method: "POST" });
+    const resp = room.onRequest(req as never) as Response;
+    expect(resp.status).toBe(200);
+    const body = await resp.json() as { created: boolean };
+    expect(body.created).toBe(true);
+  });
+
+  it("onRequest POST /create returns 409 on second call (already active)", async () => {
+    const req1 = new Request("https://do/parties/game-room/TESTAB/create", { method: "POST" });
+    room.onRequest(req1 as never);
+    const req2 = new Request("https://do/parties/game-room/TESTAB/create", { method: "POST" });
+    const resp = room.onRequest(req2 as never) as Response;
+    expect(resp.status).toBe(409);
+  });
+
+  it("onRequest GET /exists returns 404 before POST /create", async () => {
     const req = new Request("https://do/parties/game-room/TESTAB/exists");
     const resp = room.onRequest(req as never) as Response;
+    expect(resp.status).toBe(404);
+  });
+
+  it("onRequest GET /exists returns 200 after POST /create", async () => {
+    const createReq = new Request("https://do/parties/game-room/TESTAB/create", { method: "POST" });
+    room.onRequest(createReq as never);
+    const existsReq = new Request("https://do/parties/game-room/TESTAB/exists");
+    const resp = room.onRequest(existsReq as never) as Response;
     expect(resp.status).toBe(200);
     const body = await resp.json() as { exists: boolean; playerCount: number };
     expect(body.exists).toBe(true);

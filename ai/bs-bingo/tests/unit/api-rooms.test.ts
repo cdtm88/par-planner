@@ -18,9 +18,9 @@ const ROOM_CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;
 // ---------------------------------------------------------------------------
 
 describe("POST /api/rooms", () => {
-  it("returns 200 JSON with a valid code and shareUrl when DO is fresh (returns !ok)", async () => {
-    // Stub: mock GameRoom stub fetch → returns !ok (room does not exist yet)
-    const stubFetch = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
+  it("returns 200 JSON with a valid code and shareUrl when DO create succeeds (200)", async () => {
+    // Stub: mock GameRoom stub fetch → POST /create returns 200 (room created)
+    const stubFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ created: true }), { status: 200 }));
     const mockStub = { fetch: stubFetch };
     const mockGameRoom = {
       get: vi.fn().mockReturnValue(mockStub),
@@ -45,7 +45,7 @@ describe("POST /api/rooms", () => {
   });
 
   it("shareUrl uses request origin", async () => {
-    const stubFetch = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
+    const stubFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ created: true }), { status: 200 }));
     const mockGameRoom = {
       get: vi.fn().mockReturnValue({ fetch: stubFetch }),
       idFromName: vi.fn((name: string) => name),
@@ -65,9 +65,9 @@ describe("POST /api/rooms", () => {
     expect(body.shareUrl).toMatch(/^https:\/\/bsbingo\.example\.com\/join\//);
   });
 
-  it("returns 500 when all 5 attempts collide (stub always returns ok)", async () => {
-    // Stub: all DO pings return ok → room already exists → all 5 attempts fail
-    const stubFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ exists: true }), { status: 200 }));
+  it("returns 500 when all 5 attempts collide (stub always returns 409)", async () => {
+    // Stub: all DO creates return 409 → code already in use → all 5 attempts fail
+    const stubFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: "already_exists" }), { status: 409 }));
     const mockGameRoom = {
       get: vi.fn().mockReturnValue({ fetch: stubFetch }),
       idFromName: vi.fn((name: string) => name),

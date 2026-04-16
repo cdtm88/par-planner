@@ -50,7 +50,7 @@
     {label}
   </label>
   <input
-    {id}
+    id={inputId}
     class={inputClasses}
     bind:value
     {maxlength}

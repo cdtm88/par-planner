@@ -31,6 +31,9 @@ export class GameRoom extends Server<Env> {
   #hostId: string | null = null;
   #players = new Map<string, Player>();
   #createdAt = 0;
+  // #active is set to true only after POST /create is called by the API layer.
+  // This distinguishes "room was formally created" from "DO was just instantiated".
+  #active = false;
 
   onStart() {
     this.#createdAt = Date.now();
@@ -142,7 +145,30 @@ export class GameRoom extends Server<Env> {
 
   onRequest(request: Request): Response {
     const url = new URL(request.url);
+
+    // POST /create — called by POST /api/rooms to mark the room as formally created.
+    // Returns 200 on first call; 409 if already active.
+    if (request.method === "POST" && url.pathname.endsWith("/create")) {
+      if (this.#active) {
+        return new Response(JSON.stringify({ error: "already_exists" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      this.#active = true;
+      return new Response(JSON.stringify({ created: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // GET /exists — returns 200 only if the room was formally created.
     if (url.pathname.endsWith("/exists")) {
+      if (!this.#active) {
+        return new Response(JSON.stringify({ exists: false }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
       return new Response(
         JSON.stringify({ exists: true, playerCount: this.#players.size }),
         {
@@ -150,6 +176,7 @@ export class GameRoom extends Server<Env> {
         }
       );
     }
+
     return new Response("Not Found", { status: 404 });
   }
 

@@ -15,7 +15,11 @@ export const GET: RequestHandler = async ({ params, platform }) => {
   const stub = platform.env.GameRoom.get(
     platform.env.GameRoom.idFromName(params.code)
   );
-  const res = await stub.fetch("https://do/exists").catch(() => null);
+  const res = await stub
+    .fetch("https://do/exists", {
+      headers: { "x-partykit-room": params.code },
+    })
+    .catch(() => null);
   if (!res || !res.ok) error(404, { message: "Room not found" });
   // Cast: Cloudflare workers-types and Web API Response are structurally
   // compatible at runtime; the type mismatch is a tsconfig collision between

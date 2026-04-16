@@ -22,12 +22,18 @@ export const POST: RequestHandler = async ({ platform, url }) => {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = makeRoomCode();
     const stub = env.GameRoom.get(env.GameRoom.idFromName(code));
-    const res = await stub.fetch("https://do/exists").catch(() => null);
-    // A non-ok response means the DO has no room (never existed or reaped) →
-    // safe to use this code.
-    if (!res || !res.ok) {
+    // POST /create returns 200 on first call, 409 if already active.
+    const res = await stub
+      .fetch("https://do/create", {
+        method: "POST",
+        headers: { "x-partykit-room": code },
+      })
+      .catch(() => null);
+    if (res?.ok) {
       return json({ code, shareUrl: `${url.origin}/join/${code}` });
     }
+    // 409 means the code is already in use — try another.
+    // Any other error (network, DO crash) also causes retry.
   }
 
   error(500, "Could not allocate a room code");
