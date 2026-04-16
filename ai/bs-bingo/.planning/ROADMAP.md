@@ -30,7 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. When a new player joins or leaves, every other player in the lobby sees the roster update live without a manual refresh.
   4. The room's creator is visibly marked as host, and that designation is consistent for all players.
   5. Opening a link for an expired or unknown room lands on a clear error page rather than a broken lobby.
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 01-01-PLAN.md — Scaffold SvelteKit + Cloudflare + Tailwind, install test infra, author shared utilities (protocol schemas, roomCode, session, playerColor, initials)
+  - [ ] 01-02-PLAN.md — Implement GameRoom Durable Object + Worker entry + POST /api/rooms + existence endpoints
+  - [ ] 01-03-PLAN.md — Build design-system components + home page (create/join flows) + /join/[code] route
+  - [ ] 01-04-PLAN.md — Wire room store (PartySocket) + lobby page + error page + reconnecting banner
+  - [ ] 01-05-PLAN.md — Playwright e2e suite (SESS-02/03/05/06/07) + mobile-device human verification
 **UI hint**: yes
 
 ### Phase 2: Lobby Gameplay — Word Submission & Start
@@ -92,7 +97,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Transport, Room, Lobby, Presence | 0/TBD | Not started | - |
+| 1. Foundation — Transport, Room, Lobby, Presence | 0/5 | Not started | - |
 | 2. Lobby Gameplay — Word Submission & Start | 0/TBD | Not started | - |
 | 3. Board Generation & Core Mark Loop | 0/TBD | Not started | - |
 | 4. Win Detection, Announcement & Play-Again | 0/TBD | Not started | - |
