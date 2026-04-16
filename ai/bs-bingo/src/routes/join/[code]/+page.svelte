@@ -1,15 +1,15 @@
 <script lang="ts">
   import { browser } from "$app/environment";
-  import { page } from "$app/state";
   import { goto } from "$app/navigation";
+  import type { PageData } from "./$types";
   import Modal from "$lib/components/Modal.svelte";
   import TextInput from "$lib/components/TextInput.svelte";
   import Button from "$lib/components/Button.svelte";
-  import { normalizeCode } from "$lib/util/roomCode";
   import { setDisplayName } from "$lib/session";
   import { ArrowRight } from "lucide-svelte";
 
-  const code = $derived(normalizeCode(page.params.code ?? "").slice(0, 6));
+  let { data }: { data: PageData } = $props();
+
   let modalOpen = $state(true);
   let displayNameInput = $state("");
   let modalError = $state<string | null>(null);
@@ -27,8 +27,8 @@
     }
     if (!browser) return;
     busy = true;
-    setDisplayName(code, trimmed);
-    await goto(`/room/${code}`);
+    setDisplayName(data.code, trimmed);
+    await goto(`/room/${data.code}`);
   }
 </script>
 
@@ -51,7 +51,7 @@
       <p class="text-sm text-[var(--color-ink-secondary)]">
         Joining room <span
           class="font-display text-[var(--color-accent)] tracking-[0.1em]"
-          >{code}</span
+          >{data.code}</span
         >
       </p>
       <TextInput
