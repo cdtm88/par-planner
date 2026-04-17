@@ -16,7 +16,10 @@ import {
   ClientMessage,
   type Player,
   type RoomState,
+  type WordEntry,
 } from "../src/lib/protocol/messages.js";
+import { STARTER_PACKS } from "../src/lib/util/starterPacks.js";
+import { nanoid } from "nanoid";
 
 // 30 minutes idle before the room is reaped (RESEARCH.md §Open Question 2, A1).
 const IDLE_TTL_MS = 30 * 60 * 1000;
@@ -34,6 +37,9 @@ export class GameRoom extends Server<Env> {
   // #active is set to true only after POST /create is called by the API layer.
   // This distinguishes "room was formally created" from "DO was just instantiated".
   #active = false;
+  #words = new Map<string, WordEntry>();
+  #phase: "lobby" | "playing" = "lobby";
+  #usedPacks = new Set<string>();
 
   async onStart() {
     this.#active = (await this.ctx.storage.get<boolean>("active")) ?? false;
@@ -104,6 +110,80 @@ export class GameRoom extends Server<Env> {
 
       case "ping": {
         conn.send(JSON.stringify({ type: "pong" }));
+        return;
+      }
+
+      case "submitWord": {
+        const { text } = result.output;
+        const normalized = text.trim();
+        // Dedupe: synchronous check + insert — NEVER await between these (Pitfall 4)
+        const exists = [...this.#words.values()].some(
+          (w) => w.text.toLowerCase() === normalized.toLowerCase()
+        );
+        if (exists) {
+          conn.send(JSON.stringify({
+            type: "error",
+            code: "duplicate_word",
+            message: `"${normalized}" is already in the pool`,
+          }));
+          return;
+        }
+        const wordId = nanoid();
+        const connState = conn.state as { playerId?: string } | null;
+        const entry: WordEntry = {
+          wordId,
+          text: normalized,
+          submittedBy: connState?.playerId ?? "unknown",
+        };
+        this.#words.set(wordId, entry);
+        this.broadcast(JSON.stringify({ type: "wordAdded", word: entry }));
+        return;
+      }
+
+      case "removeWord": {
+        const { wordId } = result.output;
+        const entry = this.#words.get(wordId);
+        if (!entry) return; // idempotent
+        const connState = conn.state as { playerId?: string } | null;
+        if (entry.submittedBy !== connState?.playerId) {
+          conn.send(JSON.stringify({ type: "error", code: "not_owner" }));
+          return;
+        }
+        this.#words.delete(wordId);
+        this.broadcast(JSON.stringify({ type: "wordRemoved", wordId }));
+        return;
+      }
+
+      case "loadStarterPack": {
+        const connState = conn.state as { playerId?: string } | null;
+        if (connState?.playerId !== this.#hostId) return; // host-only, silent ignore
+        const { pack } = result.output;
+        if (this.#usedPacks.has(pack)) return; // once-per-session
+        this.#usedPacks.add(pack);
+        const packWords = STARTER_PACKS[pack as keyof typeof STARTER_PACKS];
+        for (const text of packWords) {
+          const alreadyIn = [...this.#words.values()].some(
+            (w) => w.text.toLowerCase() === text.toLowerCase()
+          );
+          if (alreadyIn) continue;
+          const wordId = nanoid();
+          // Use host's playerId (not "pack") so host can delete pack words (Pitfall 3)
+          const entry: WordEntry = { wordId, text, submittedBy: connState.playerId! };
+          this.#words.set(wordId, entry);
+          this.broadcast(JSON.stringify({ type: "wordAdded", word: entry }));
+        }
+        return;
+      }
+
+      case "startGame": {
+        const connState = conn.state as { playerId?: string } | null;
+        if (connState?.playerId !== this.#hostId) return;
+        if (this.#words.size < 5) {
+          conn.send(JSON.stringify({ type: "error", code: "not_enough_words" }));
+          return;
+        }
+        this.#phase = "playing";
+        this.broadcast(JSON.stringify({ type: "roomState", state: this.#snapshot() }));
         return;
       }
     }
@@ -185,11 +265,11 @@ export class GameRoom extends Server<Env> {
   #snapshot(): RoomState {
     return {
       code: this.name, // DO's idFromName string — set by PartyServer from room name
-      phase: "lobby",
+      phase: this.#phase,
       hostId: this.#hostId,
       players: [...this.#players.values()],
-      words: [],      // expanded in Plan 02 with #words map
-      usedPacks: [],  // expanded in Plan 02 with #usedPacks set
+      words: [...this.#words.values()],
+      usedPacks: [...this.#usedPacks],
     };
   }
 }
