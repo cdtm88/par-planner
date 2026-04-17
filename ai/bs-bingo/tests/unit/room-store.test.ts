@@ -110,6 +110,8 @@ describe("createRoomStore", () => {
       players: [
         { playerId: "test-player-id", displayName: "Tester", isHost: true, joinedAt: 1000 },
       ],
+      words: [],
+      usedPacks: [],
     };
 
     ws.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
@@ -131,6 +133,8 @@ describe("createRoomStore", () => {
       players: [
         { playerId: "test-player-id", displayName: "Tester", isHost: true, joinedAt: 1000 },
       ],
+      words: [],
+      usedPacks: [],
     };
     ws.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
     expect(store.state!.players).toHaveLength(1);
@@ -155,6 +159,8 @@ describe("createRoomStore", () => {
         { playerId: "test-player-id", displayName: "Tester", isHost: true, joinedAt: 1000 },
         { playerId: "player-2", displayName: "Bob", isHost: false, joinedAt: 2000 },
       ],
+      words: [],
+      usedPacks: [],
     };
     ws.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
     expect(store.state!.players).toHaveLength(2);
