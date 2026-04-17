@@ -188,6 +188,8 @@ export class GameRoom extends Server<Env> {
       phase: "lobby",
       hostId: this.#hostId,
       players: [...this.#players.values()],
+      words: [],      // expanded in Plan 02 with #words map
+      usedPacks: [],  // expanded in Plan 02 with #usedPacks set
     };
   }
 }
