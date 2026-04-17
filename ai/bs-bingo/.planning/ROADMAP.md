@@ -52,7 +52,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
   - [x] 02-01-PLAN.md — Define type contracts (Valibot schemas, gridTier utilities, starter pack constants) + unit tests
   - [x] 02-02-PLAN.md — Extend GameRoom DO with word pool handlers + room store with word state + DO unit tests
-  - [ ] 02-03-PLAN.md — Build UI components (WordChip, WordPool, PackPills, GridProgress) + wire into lobby page + human verification
+  - [x] 02-03-PLAN.md — Build UI components (WordChip, WordPool, PackPills, GridProgress) + wire into lobby page + human verification
 **UI hint**: yes
 
 ### Phase 3: Board Generation & Core Mark Loop
