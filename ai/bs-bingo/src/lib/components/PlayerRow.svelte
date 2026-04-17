@@ -11,9 +11,10 @@
       displayName: string;
       isHost: boolean;
     };
+    markCount?: number;
   };
 
-  let { player }: PlayerRowProps = $props();
+  let { player, markCount = 0 }: PlayerRowProps = $props();
 
   const color = $derived(getPlayerColor(player.playerId));
   const initials = $derived(getInitials(player.displayName));
@@ -46,5 +47,18 @@
         Host
       {/snippet}
     </Badge>
+  {/if}
+  <!-- Mark-count badge (Phase 3 — D-07) -->
+  {#if markCount > 0}
+    <span
+      data-testid="mark-badge"
+      class="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-2 text-sm font-semibold
+             bg-[var(--color-accent)] text-[var(--color-ink-inverse)]
+             transition-[background-color,transform] duration-[120ms] ease-out
+             motion-reduce:transition-none"
+      aria-label="{markCount} {markCount === 1 ? 'mark' : 'marks'}"
+    >
+      {markCount}
+    </span>
   {/if}
 </li>
