@@ -67,7 +67,7 @@ Plans:
   5. The board is fully usable on a phone held in portrait: every cell is at least a 44px tap target, nothing overflows the viewport, and marking works with touch as reliably as with a mouse.
 **Plans**: 4 plans
 Plans:
-  - [ ] 03-01-PLAN.md — Define BoardCell + markWord/boardAssigned/wordMarked message schemas + unbiased Fisher-Yates shuffle utility (BOAR-02)
+  - [x] 03-01-PLAN.md — Define BoardCell + markWord/boardAssigned/wordMarked message schemas + unbiased Fisher-Yates shuffle utility (BOAR-02)
   - [ ] 03-02-PLAN.md — Extend GameRoom DO with startGame board-deal (per-connection send), markWord handler, wordMarked broadcast (BOAR-01/02/03/04/06)
   - [ ] 03-03-PLAN.md — Extend room store with board/playerMarks/markedCellIds/toggleMark + BoardCell.svelte leaf component (BOAR-04/05)
   - [ ] 03-04-PLAN.md — Board.svelte grid + PlayerRow markCount badge + room page wiring + e2e board-mark test (BOAR-04/05/06/07)
