@@ -4,6 +4,12 @@
  * One instance per 6-char room code. Holds game state in memory.
  * WebSocket Hibernation is enabled so idle rooms cost near-zero.
  *
+ * Hibernation-safety: in-memory class fields are wiped whenever the DO
+ * hibernates. Every mutation is mirrored to `ctx.storage`, and `onStart()`
+ * rehydrates fields from storage on wake. Without this, the DO wakes up
+ * with `#hostId = null` and silently drops host-only messages like
+ * `startGame` (see .planning/debug/start-game-button-no-board.md).
+ *
  * Sources:
  *   - RESEARCH.md Pattern 1 (lines 299–410)
  *   - RESEARCH.md Pitfalls 2, 6, 8
@@ -27,13 +33,23 @@ import { nanoid } from "nanoid";
 // 30 minutes idle before the room is reaped (RESEARCH.md §Open Question 2, A1).
 const IDLE_TTL_MS = 30 * 60 * 1000;
 
+// Storage keys — kept narrow and explicit so onStart can rehydrate cleanly.
+const K_ACTIVE = "active";
+const K_HOST_ID = "hostId";
+const K_PLAYERS = "players";      // Player[]
+const K_WORDS = "words";          // WordEntry[]
+const K_PHASE = "phase";          // "lobby" | "playing"
+const K_USED_PACKS = "usedPacks"; // string[]
+const K_BOARDS = "boards";        // Array<[playerId, BoardCell[]]>
+const K_MARKS = "marks";          // Array<[playerId, string[]]>
+
 type Env = { GameRoom: DurableObjectNamespace };
 
 export class GameRoom extends Server<Env> {
   // CRITICAL: opt into WebSocket Hibernation API — RESEARCH.md Pitfall 2.
   static options = { hibernate: true };
 
-  // In-memory state — ephemeral by design (Phase 1 TTL model).
+  // In-memory state — rehydrated from storage in onStart() on wake.
   #hostId: string | null = null;
   #players = new Map<string, Player>();
   #createdAt = 0;
@@ -47,10 +63,70 @@ export class GameRoom extends Server<Env> {
   #marks = new Map<string, Set<string>>();    // playerId → set of marked cellIds
 
   async onStart() {
-    this.#active = (await this.ctx.storage.get<boolean>("active")) ?? false;
+    // Rehydrate every field that must survive hibernation. Without this,
+    // post-wake host-only guards (startGame, loadStarterPack) silently drop
+    // messages because #hostId is null.
+    const [
+      active,
+      hostId,
+      players,
+      words,
+      phase,
+      usedPacks,
+      boards,
+      marks,
+    ] = await Promise.all([
+      this.ctx.storage.get<boolean>(K_ACTIVE),
+      this.ctx.storage.get<string | null>(K_HOST_ID),
+      this.ctx.storage.get<Player[]>(K_PLAYERS),
+      this.ctx.storage.get<WordEntry[]>(K_WORDS),
+      this.ctx.storage.get<"lobby" | "playing">(K_PHASE),
+      this.ctx.storage.get<string[]>(K_USED_PACKS),
+      this.ctx.storage.get<Array<[string, BoardCell[]]>>(K_BOARDS),
+      this.ctx.storage.get<Array<[string, string[]]>>(K_MARKS),
+    ]);
+
+    this.#active = active ?? false;
+    this.#hostId = hostId ?? null;
+    this.#players = new Map((players ?? []).map((p) => [p.playerId, p]));
+    this.#words = new Map((words ?? []).map((w) => [w.wordId, w]));
+    this.#phase = phase ?? "lobby";
+    this.#usedPacks = new Set(usedPacks ?? []);
+    this.#boards = new Map(boards ?? []);
+    this.#marks = new Map((marks ?? []).map(([pid, ids]) => [pid, new Set(ids)]));
+
     this.#createdAt = Date.now();
     // Schedule idle reaper — fires after IDLE_TTL_MS with no activity.
     this.ctx.storage.setAlarm(Date.now() + IDLE_TTL_MS);
+  }
+
+  // --- Persistence helpers ---------------------------------------------------
+  // Each mutation writes exactly what changed. Fire-and-forget (void) — DO
+  // storage writes are durable before the response returns on the same request,
+  // which is sufficient for our per-room coordination model.
+
+  #persistHostId() {
+    void this.ctx.storage.put(K_HOST_ID, this.#hostId);
+  }
+  #persistPlayers() {
+    void this.ctx.storage.put(K_PLAYERS, [...this.#players.values()]);
+  }
+  #persistWords() {
+    void this.ctx.storage.put(K_WORDS, [...this.#words.values()]);
+  }
+  #persistPhase() {
+    void this.ctx.storage.put(K_PHASE, this.#phase);
+  }
+  #persistUsedPacks() {
+    void this.ctx.storage.put(K_USED_PACKS, [...this.#usedPacks]);
+  }
+  #persistBoards() {
+    void this.ctx.storage.put(K_BOARDS, [...this.#boards.entries()]);
+  }
+  #persistMarks() {
+    const serialized: Array<[string, string[]]> = [];
+    for (const [pid, ids] of this.#marks) serialized.push([pid, [...ids]]);
+    void this.ctx.storage.put(K_MARKS, serialized);
   }
 
   onConnect(_conn: Connection, _ctx: ConnectionContext) {
@@ -81,7 +157,10 @@ export class GameRoom extends Server<Env> {
 
         // RESEARCH.md Pitfall 8: only assign host when BOTH conditions hold.
         const isFirst = this.#players.size === 0 && this.#hostId === null;
-        if (isFirst) this.#hostId = playerId;
+        if (isFirst) {
+          this.#hostId = playerId;
+          this.#persistHostId();
+        }
 
         const player: Player = {
           playerId,
@@ -90,6 +169,7 @@ export class GameRoom extends Server<Env> {
           joinedAt: Date.now(),
         };
         this.#players.set(playerId, player);
+        this.#persistPlayers();
 
         // Tag connection so onClose knows which player left.
         conn.setState({ playerId });
@@ -141,6 +221,7 @@ export class GameRoom extends Server<Env> {
           submittedBy: connState?.playerId ?? "unknown",
         };
         this.#words.set(wordId, entry);
+        this.#persistWords();
         this.broadcast(JSON.stringify({ type: "wordAdded", word: entry }));
         return;
       }
@@ -155,6 +236,7 @@ export class GameRoom extends Server<Env> {
           return;
         }
         this.#words.delete(wordId);
+        this.#persistWords();
         this.broadcast(JSON.stringify({ type: "wordRemoved", wordId }));
         return;
       }
@@ -165,7 +247,9 @@ export class GameRoom extends Server<Env> {
         const { pack } = result.output;
         if (this.#usedPacks.has(pack)) return; // once-per-session
         this.#usedPacks.add(pack);
+        this.#persistUsedPacks();
         const packWords = STARTER_PACKS[pack as keyof typeof STARTER_PACKS];
+        let wordsChanged = false;
         for (const text of packWords) {
           const alreadyIn = [...this.#words.values()].some(
             (w) => w.text.toLowerCase() === text.toLowerCase()
@@ -175,8 +259,10 @@ export class GameRoom extends Server<Env> {
           // Use host's playerId (not "pack") so host can delete pack words (Pitfall 3)
           const entry: WordEntry = { wordId, text, submittedBy: connState.playerId! };
           this.#words.set(wordId, entry);
+          wordsChanged = true;
           this.broadcast(JSON.stringify({ type: "wordAdded", word: entry }));
         }
+        if (wordsChanged) this.#persistWords();
         return;
       }
 
@@ -188,6 +274,7 @@ export class GameRoom extends Server<Env> {
           return;
         }
         this.#phase = "playing";
+        this.#persistPhase();
 
         // PITFALL 8: broadcast gameStarted FIRST so every client mounts <Board/> before
         // their boardAssigned arrives. WS is FIFO per connection, so this ordering is
@@ -204,6 +291,8 @@ export class GameRoom extends Server<Env> {
           this.#marks.set(s.playerId, new Set());
           c.send(JSON.stringify({ type: "boardAssigned", cells }));
         }
+        this.#persistBoards();
+        this.#persistMarks();
         return;
       }
 
@@ -226,6 +315,7 @@ export class GameRoom extends Server<Env> {
         // Toggle — UI-SPEC: second tap unmarks.
         if (myMarks.has(cellId)) myMarks.delete(cellId);
         else myMarks.add(cellId);
+        this.#persistMarks();
 
         // BROADCAST: strict payload shape — no layout fields (BOAR-06).
         this.broadcast(JSON.stringify({
@@ -250,6 +340,7 @@ export class GameRoom extends Server<Env> {
     if (!player) return;
 
     this.#players.delete(state.playerId);
+    this.#persistPlayers();
 
     this.broadcast(
       JSON.stringify({
@@ -286,7 +377,7 @@ export class GameRoom extends Server<Env> {
         });
       }
       this.#active = true;
-      void this.ctx.storage.put("active", true);
+      void this.ctx.storage.put(K_ACTIVE, true);
       return new Response(JSON.stringify({ created: true }), {
         headers: { "Content-Type": "application/json" },
       });

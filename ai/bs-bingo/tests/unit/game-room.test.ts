@@ -50,7 +50,7 @@ interface FakeConn {
 vi.mock("partyserver", () => {
   class FakeServer {
     static options = { hibernate: false };
-    ctx: { storage: { setAlarm: ReturnType<typeof vi.fn>; deleteAll: ReturnType<typeof vi.fn> } };
+    ctx: { storage: { setAlarm: ReturnType<typeof vi.fn>; deleteAll: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn> } };
     // PartyServer exposes `this.name` from storage; we allow tests to set it.
     _name: string = "TESTAB";
 
@@ -789,4 +789,62 @@ describe("GameRoom — board & marks (Phase 3)", () => {
     const payload = JSON.parse(getBroadcast().mock.calls[0][0]);
     expect(Object.keys(payload).sort()).toEqual(["markCount", "playerId", "type"]);
   });
+
+  // -------------------------------------------------------------------------
+  // Hibernation rehydration (regression for start-game-button-no-board)
+  // -------------------------------------------------------------------------
+
+  it('rehydrates hostId/players/words/phase from storage on wake (startGame survives hibernation)', async () => {
+    // Arrange: pretend the room had state BEFORE hibernation by stuffing the
+    // storage.get mock to return the pre-hibernation values.
+    const preHostId = 'p1';
+    const prePlayers = [
+      { playerId: 'p1', displayName: 'Alice', isHost: true, joinedAt: 100 },
+    ];
+    const preWords = Array.from({ length: 5 }, (_, i) => ({
+      wordId: 'w' + i,
+      text: 'Word' + i,
+      submittedBy: 'p1',
+    }));
+    const getMock = room.ctx.storage.get as ReturnType<typeof vi.fn>;
+    getMock.mockImplementation((key: string) => {
+      switch (key) {
+        case 'active': return Promise.resolve(true);
+        case 'hostId': return Promise.resolve(preHostId);
+        case 'players': return Promise.resolve(prePlayers);
+        case 'words': return Promise.resolve(preWords);
+        case 'phase': return Promise.resolve('lobby');
+        case 'usedPacks': return Promise.resolve([]);
+        case 'boards': return Promise.resolve([]);
+        case 'marks': return Promise.resolve([]);
+        default: return Promise.resolve(undefined);
+      }
+    });
+
+    // Simulate waking from hibernation.
+    await (room as unknown as { onStart: () => Promise<void> }).onStart();
+
+    // A connection that reconnected after hibernation already has conn.state
+    // (hibernation API persists it) but the in-memory class state was wiped.
+    // The fix must have rehydrated #hostId so the host-only guard passes.
+    const host = makeConn('c1');
+    host.state = { playerId: 'p1' };
+    conns.push(host);
+
+    vi.clearAllMocks();
+    host._sent.length = 0;
+
+    // Act: host clicks Start Game after hibernation.
+    room.onMessage(host as never, JSON.stringify({ type: 'startGame' }));
+
+    // Assert: gameStarted broadcast fires (not silently dropped by host guard).
+    expect(getBroadcast()).toHaveBeenCalled();
+    const firstBroadcast = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(firstBroadcast.type).toBe('gameStarted');
+
+    // Assert: host received boardAssigned.
+    const types = host._sent.map((m) => JSON.parse(m).type);
+    expect(types).toContain('boardAssigned');
+  });
+
 });
