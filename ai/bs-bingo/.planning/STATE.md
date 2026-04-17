@@ -2,35 +2,35 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 03 UI-SPEC approved
-last_updated: "2026-04-17T18:05:12.598Z"
+status: ready
+stopped_at: Phase 03 complete, ready to plan Phase 04
+last_updated: "2026-04-17T22:15:00.000Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 12
   completed_plans: 12
-  percent: 100
+  percent: 60
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-16)
+See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Players can join a live game, mark off buzzwords as they're said, and race to be the first to call "Bingo"
-**Current focus:** Phase 03 — board-generation-core-mark-loop
+**Current focus:** Phase 04 — win-detection-announcement-play-again
 
 ## Current Position
 
 Phase: 4
 Plan: Not started
-Status: Executing Phase 03
+Status: Ready to plan Phase 04
 Last activity: 2026-04-17
 
-Progress: [██░░░░░░░░] 20%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -69,8 +69,8 @@ Recent decisions affecting current work:
 
 - Phase 1: Stack validated — SvelteKit + PartyServer + Cloudflare DO, 79 tests green
 - Phase 1: Browser-only + anonymous sessions confirmed working on mobile
-- Phase 1: pagehide listener required for clean WS disconnect on iOS Safari
-- Phase 1: POST /create + guarded /exists pattern for room lifecycle
+- Phase 3: DO hibernation requires persist+rehydrate for all in-memory state (learned from start-game bug)
+- Phase 3: `toggleMark` reassigns `new Set(...)` — in-place `.add()/.delete()` doesn't trigger Svelte 5 runes reactivity
 
 ### Pending Todos
 
@@ -78,7 +78,6 @@ No todos captured yet.
 
 ### Blockers/Concerns
 
-- Phase 3 benefits from a short spike on bingo-fairness invariants (winnability, blank placement) before implementation (flagged in research/SUMMARY.md).
 - Phase 5 needs a dedicated research pass on the reconnect/resume protocol; the pattern is stack-specific and dense (flagged in research/SUMMARY.md).
 
 ## Deferred Items
@@ -91,6 +90,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-17T13:56:35.092Z
-Stopped at: Phase 03 UI-SPEC approved
-Resume file: .planning/phases/03-board-generation-core-mark-loop/03-UI-SPEC.md
+Last session: 2026-04-17
+Stopped at: Phase 03 complete, ready to plan Phase 04
+Resume file: None
