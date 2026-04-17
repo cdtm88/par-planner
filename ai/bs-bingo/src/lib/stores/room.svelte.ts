@@ -6,6 +6,7 @@ import {
   type RoomState,
   type WordEntry,
   type ClientMessage,
+  type BoardCell,
 } from "$lib/protocol/messages";
 import { getOrCreatePlayer } from "$lib/session";
 
@@ -25,6 +26,9 @@ export function createRoomStore(code: string) {
   let words = $state<WordEntry[]>([]);
   let usedPacks = $state<Set<string>>(new Set());
   let lastError = $state<{ code: string; message?: string } | null>(null);
+  let board = $state<BoardCell[] | null>(null);
+  let playerMarks = $state<Record<string, number>>({});
+  let markedCellIds = $state<Set<string>>(new Set());
 
   connection.status = "connecting";
 
@@ -87,6 +91,15 @@ export function createRoomStore(code: string) {
       case "wordRemoved":
         words = words.filter((w) => w.wordId !== msg.wordId);
         break;
+      case "boardAssigned":
+        board = msg.cells;
+        // Fresh board → no marks yet. Reassign (Pitfall 3) — never mutate existing Set.
+        markedCellIds = new Set();
+        break;
+      case "wordMarked":
+        // Reassign the object (Pitfall 3 analog) so runes see the change.
+        playerMarks = { ...playerMarks, [msg.playerId]: msg.markCount };
+        break;
     }
   });
 
@@ -115,6 +128,23 @@ export function createRoomStore(code: string) {
     disconnect() {
       ws.close();
       connection.status = "closed";
+    },
+    get board() {
+      return board;
+    },
+    get playerMarks() {
+      return playerMarks;
+    },
+    get markedCellIds() {
+      return markedCellIds;
+    },
+    toggleMark(cellId: string) {
+      // Optimistic local flip — reassign Set (Pitfall 3) so rune reactivity fires.
+      const next = new Set(markedCellIds);
+      if (next.has(cellId)) next.delete(cellId);
+      else next.add(cellId);
+      markedCellIds = next;
+      ws.send(JSON.stringify({ type: "markWord", cellId }));
     },
   };
 }
