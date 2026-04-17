@@ -1,6 +1,12 @@
 import { PartySocket } from "partysocket";
 import * as v from "valibot";
-import { ServerMessage, PARTY_NAME as _PARTY_NAME, type RoomState } from "$lib/protocol/messages";
+import {
+  ServerMessage,
+  PARTY_NAME as _PARTY_NAME,
+  type RoomState,
+  type WordEntry,
+  type ClientMessage,
+} from "$lib/protocol/messages";
 import { getOrCreatePlayer } from "$lib/session";
 
 // Re-export PARTY_NAME for tests and other consumers
@@ -16,6 +22,8 @@ export function createRoomStore(code: string) {
 
   let state = $state<RoomState | null>(null);
   let status = $state<"connecting" | "open" | "reconnecting" | "closed">("connecting");
+  let words = $state<WordEntry[]>([]);
+  let usedPacks = $state<Set<string>>(new Set());
 
   connection.status = "connecting";
 
@@ -53,6 +61,8 @@ export function createRoomStore(code: string) {
     switch (msg.type) {
       case "roomState":
         state = msg.state;
+        words = msg.state.words ?? [];
+        usedPacks = new Set(msg.state.usedPacks ?? []);
         break;
       case "playerJoined":
         if (state && !state.players.some((p) => p.playerId === msg.player.playerId)) {
@@ -65,6 +75,14 @@ export function createRoomStore(code: string) {
       case "error":
         console.warn("Server error:", msg.code, msg.message);
         break;
+      case "wordAdded":
+        if (!words.some((w) => w.wordId === msg.word.wordId)) {
+          words = [...words, msg.word];
+        }
+        break;
+      case "wordRemoved":
+        words = words.filter((w) => w.wordId !== msg.wordId);
+        break;
     }
   });
 
@@ -74,6 +92,15 @@ export function createRoomStore(code: string) {
     },
     get status() {
       return status;
+    },
+    send(msg: ClientMessage) {
+      ws.send(JSON.stringify(msg));
+    },
+    get words() {
+      return words;
+    },
+    get usedPacks() {
+      return usedPacks;
     },
     disconnect() {
       ws.close();

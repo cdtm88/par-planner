@@ -326,3 +326,236 @@ describe("GameRoom", () => {
     expect(pong.type).toBe("pong");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 2: Word pool tests
+// ---------------------------------------------------------------------------
+
+describe("GameRoom — word pool (Phase 2)", () => {
+  let room: InstanceType<typeof GameRoom>;
+
+  beforeEach(() => {
+    room = new GameRoom({} as never, {} as never);
+    vi.clearAllMocks();
+  });
+
+  function joinPlayer(conn: FakeConn, playerId: string, displayName: string) {
+    room.onMessage(conn as never, JSON.stringify({ type: "hello", playerId, displayName }));
+    vi.clearAllMocks();
+  }
+
+  function getBroadcast() {
+    return (room as unknown as { broadcast: ReturnType<typeof vi.fn> }).broadcast;
+  }
+
+  it("submitWord adds word and broadcasts wordAdded", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+
+    room.onMessage(conn as never, JSON.stringify({ type: "submitWord", text: "Synergy" }));
+
+    expect(getBroadcast()).toHaveBeenCalledOnce();
+    const msg = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(msg.type).toBe("wordAdded");
+    expect(msg.word.text).toBe("Synergy");
+    expect(msg.word.submittedBy).toBe("p1");
+    expect(typeof msg.word.wordId).toBe("string");
+  });
+
+  it("submitWord duplicate (case-insensitive) sends error to submitter only", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+
+    room.onMessage(conn as never, JSON.stringify({ type: "submitWord", text: "Synergy" }));
+    vi.clearAllMocks();
+    conn._sent.length = 0;
+
+    room.onMessage(conn as never, JSON.stringify({ type: "submitWord", text: "synergy" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+    expect(conn._sent).toHaveLength(1);
+    const err = JSON.parse(conn._sent[0]);
+    expect(err.type).toBe("error");
+    expect(err.code).toBe("duplicate_word");
+  });
+
+  it("submitWord trims whitespace", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+
+    room.onMessage(conn as never, JSON.stringify({ type: "submitWord", text: "  Synergy  " }));
+
+    const msg = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(msg.word.text).toBe("Synergy");
+  });
+
+  it("removeWord by owner removes and broadcasts wordRemoved", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+
+    room.onMessage(conn as never, JSON.stringify({ type: "submitWord", text: "Synergy" }));
+    const wordId = JSON.parse(getBroadcast().mock.calls[0][0]).word.wordId;
+    vi.clearAllMocks();
+
+    room.onMessage(conn as never, JSON.stringify({ type: "removeWord", wordId }));
+
+    expect(getBroadcast()).toHaveBeenCalledOnce();
+    const msg = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(msg.type).toBe("wordRemoved");
+    expect(msg.wordId).toBe(wordId);
+  });
+
+  it("removeWord by non-owner sends not_owner error", () => {
+    const conn1 = makeConn("c1");
+    const conn2 = makeConn("c2");
+    joinPlayer(conn1, "p1", "Alice");
+    joinPlayer(conn2, "p2", "Bob");
+
+    room.onMessage(conn1 as never, JSON.stringify({ type: "submitWord", text: "Synergy" }));
+    const wordId = JSON.parse(getBroadcast().mock.calls[0][0]).word.wordId;
+    vi.clearAllMocks();
+    conn2._sent.length = 0;
+
+    room.onMessage(conn2 as never, JSON.stringify({ type: "removeWord", wordId }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+    expect(conn2._sent).toHaveLength(1);
+    const err = JSON.parse(conn2._sent[0]);
+    expect(err.type).toBe("error");
+    expect(err.code).toBe("not_owner");
+  });
+
+  it("removeWord for nonexistent wordId is idempotent", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+    conn._sent.length = 0;
+
+    room.onMessage(conn as never, JSON.stringify({ type: "removeWord", wordId: "nonexistent" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+    expect(conn._sent).toHaveLength(0);
+  });
+
+  it("loadStarterPack by host adds pack words with host's playerId", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+
+    room.onMessage(conn as never, JSON.stringify({ type: "loadStarterPack", pack: "agile" }));
+
+    // agile pack has 20 words
+    expect(getBroadcast().mock.calls.length).toBe(20);
+    const firstMsg = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(firstMsg.type).toBe("wordAdded");
+    expect(firstMsg.word.submittedBy).toBe("p1");
+  });
+
+  it("loadStarterPack by non-host is silently ignored", () => {
+    const conn1 = makeConn("c1");
+    const conn2 = makeConn("c2");
+    joinPlayer(conn1, "p1", "Alice");
+    joinPlayer(conn2, "p2", "Bob");
+
+    room.onMessage(conn2 as never, JSON.stringify({ type: "loadStarterPack", pack: "agile" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("loadStarterPack twice is silently ignored", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+
+    room.onMessage(conn as never, JSON.stringify({ type: "loadStarterPack", pack: "agile" }));
+    vi.clearAllMocks();
+
+    room.onMessage(conn as never, JSON.stringify({ type: "loadStarterPack", pack: "agile" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("loadStarterPack silently skips duplicates already in pool", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+
+    // "Sprint" is the first word in the agile pack
+    room.onMessage(conn as never, JSON.stringify({ type: "submitWord", text: "Sprint" }));
+    vi.clearAllMocks();
+
+    room.onMessage(conn as never, JSON.stringify({ type: "loadStarterPack", pack: "agile" }));
+
+    // agile pack has 20 words; 1 duplicate ("Sprint") should be skipped
+    expect(getBroadcast().mock.calls.length).toBe(19);
+  });
+
+  it("startGame with < 5 words sends not_enough_words error", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+
+    for (let i = 0; i < 4; i++) {
+      room.onMessage(conn as never, JSON.stringify({ type: "submitWord", text: `Word${i}` }));
+    }
+    vi.clearAllMocks();
+    conn._sent.length = 0;
+
+    room.onMessage(conn as never, JSON.stringify({ type: "startGame" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+    expect(conn._sent).toHaveLength(1);
+    const err = JSON.parse(conn._sent[0]);
+    expect(err.type).toBe("error");
+    expect(err.code).toBe("not_enough_words");
+  });
+
+  it("startGame with 5 words flips phase to playing and broadcasts roomState", () => {
+    const conn = makeConn("c1");
+    joinPlayer(conn, "p1", "Alice");
+
+    for (let i = 0; i < 5; i++) {
+      room.onMessage(conn as never, JSON.stringify({ type: "submitWord", text: `Word${i}` }));
+    }
+    vi.clearAllMocks();
+
+    room.onMessage(conn as never, JSON.stringify({ type: "startGame" }));
+
+    expect(getBroadcast()).toHaveBeenCalledOnce();
+    const msg = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(msg.type).toBe("roomState");
+    expect(msg.state.phase).toBe("playing");
+  });
+
+  it("startGame by non-host is silently ignored", () => {
+    const conn1 = makeConn("c1");
+    const conn2 = makeConn("c2");
+    joinPlayer(conn1, "p1", "Alice");
+    joinPlayer(conn2, "p2", "Bob");
+
+    for (let i = 0; i < 5; i++) {
+      room.onMessage(conn1 as never, JSON.stringify({ type: "submitWord", text: `Word${i}` }));
+    }
+    vi.clearAllMocks();
+
+    room.onMessage(conn2 as never, JSON.stringify({ type: "startGame" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("roomState snapshot includes words and usedPacks", () => {
+    const conn1 = makeConn("c1");
+    const conn2 = makeConn("c2");
+    joinPlayer(conn1, "p1", "Alice");
+
+    room.onMessage(conn1 as never, JSON.stringify({ type: "submitWord", text: "Synergy" }));
+    room.onMessage(conn1 as never, JSON.stringify({ type: "submitWord", text: "Leverage" }));
+    room.onMessage(conn1 as never, JSON.stringify({ type: "loadStarterPack", pack: "agile" }));
+    vi.clearAllMocks();
+    conn2._sent.length = 0;
+
+    // p2 joins — receives full snapshot
+    room.onMessage(conn2 as never, JSON.stringify({ type: "hello", playerId: "p2", displayName: "Bob" }));
+
+    expect(conn2._sent).toHaveLength(1);
+    const snapshot = JSON.parse(conn2._sent[0]);
+    expect(snapshot.type).toBe("roomState");
+    expect(snapshot.state.words.length).toBeGreaterThan(0);
+    expect(snapshot.state.usedPacks).toContain("agile");
+  });
+});
