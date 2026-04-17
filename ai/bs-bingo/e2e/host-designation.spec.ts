@@ -24,8 +24,8 @@ test("SESS-06: first player is host, visibly marked on all clients", async ({ br
   await b.getByRole("button", { name: /Join game/ }).click();
   await b.waitForURL(`**/room/${code}`);
 
-  // Bob (non-host) sees "Waiting for the host to start." and Alice has Host badge on his view.
-  await expect(b.getByText("Waiting for the host to start.")).toBeVisible();
+  // Bob (non-host) sees waiting message and Alice has Host badge on his view.
+  await expect(b.getByText(/Waiting for .* to start the game/i)).toBeVisible();
   await expect(b.getByRole("button", { name: "Start Game" })).toHaveCount(0);
   const bobAliceRow = b.locator("li", { hasText: "Alice" });
   await expect(bobAliceRow.getByText("Host")).toBeVisible();

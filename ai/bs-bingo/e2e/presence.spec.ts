@@ -31,7 +31,7 @@ test("SESS-05: live roster updates across clients within 1 second", async ({ bro
   await expect(a.getByText("Players · 2")).toBeVisible({ timeout: 2000 });
   await expect(a.getByText("Bob")).toBeVisible({ timeout: 2000 });
   await expect(b.getByText("Players · 2")).toBeVisible({ timeout: 2000 });
-  await expect(b.getByText("Alice")).toBeVisible({ timeout: 2000 });
+  await expect(b.locator("li", { hasText: "Alice" })).toBeVisible({ timeout: 2000 });
   const elapsed = Date.now() - t0;
   expect(elapsed).toBeLessThan(5000); // very loose — includes page navigation time
 
