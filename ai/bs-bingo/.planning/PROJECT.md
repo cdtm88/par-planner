@@ -14,11 +14,14 @@ Players can join a live game, mark off buzzwords as they're said, and race to be
 
 - ✓ Users can create a new game session and share a join code/link — Phase 1
 - ✓ Users can join an existing game session via code or link — Phase 1
+- ✓ Players can submit words they expect to hear before the game starts — Phase 2
+- ✓ Host can start the game when ready (minimum 5 words required) — Phase 2
+- ✓ Grid size auto-negotiates from word count (3×3/4×4/5×5) — Phase 2
+- ✓ Host can seed word pool from starter packs (Corporate Classics, Agile, Sales) — Phase 2
 
 ### Active
 
-- [ ] Players can submit words they expect to hear before the game starts
-- [ ] Host can start the game when ready
+- [ ] Each player receives a uniquely generated bingo board with submitted words in random positions plus blank spaces
 - [ ] Each player receives a uniquely generated bingo board with submitted words in random positions plus blank spaces
 - [ ] Players can click words on their board to mark them off
 - [ ] First player to complete a full line (row, column, or diagonal — including blanks) wins
@@ -75,4 +78,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 after Phase 1*
+*Last updated: 2026-04-17 after Phase 2*
