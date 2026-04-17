@@ -505,7 +505,7 @@ describe("GameRoom — word pool (Phase 2)", () => {
     expect(err.code).toBe("not_enough_words");
   });
 
-  it("startGame with 5 words flips phase to playing and broadcasts roomState", () => {
+  it("startGame with 5 words flips phase to playing and broadcasts gameStarted", () => {
     const conn = makeConn("c1");
     joinPlayer(conn, "p1", "Alice");
 
@@ -516,10 +516,11 @@ describe("GameRoom — word pool (Phase 2)", () => {
 
     room.onMessage(conn as never, JSON.stringify({ type: "startGame" }));
 
-    expect(getBroadcast()).toHaveBeenCalledOnce();
-    const msg = JSON.parse(getBroadcast().mock.calls[0][0]);
-    expect(msg.type).toBe("roomState");
-    expect(msg.state.phase).toBe("playing");
+    // Phase 3 change: startGame now broadcasts gameStarted (phase flip) instead of roomState.
+    // Per-connection boardAssigned is sent separately via conn.send.
+    expect(getBroadcast()).toHaveBeenCalled();
+    const firstBroadcast = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(firstBroadcast.type).toBe("gameStarted");
   });
 
   it("startGame by non-host is silently ignored", () => {
@@ -557,5 +558,229 @@ describe("GameRoom — word pool (Phase 2)", () => {
     expect(snapshot.type).toBe("roomState");
     expect(snapshot.state.words.length).toBeGreaterThan(0);
     expect(snapshot.state.usedPacks).toContain("agile");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 3: Board generation + mark loop tests
+// ---------------------------------------------------------------------------
+
+describe("GameRoom — board & marks (Phase 3)", () => {
+  let room: InstanceType<typeof GameRoom>;
+  let conns: FakeConn[];
+
+  beforeEach(() => {
+    room = new GameRoom({} as never, {} as never);
+    conns = [];
+    // FakeServer does not provide getConnections; stub it to return the harness's conns list.
+    (room as unknown as { getConnections: () => FakeConn[] }).getConnections = () => conns;
+    vi.clearAllMocks();
+  });
+
+  function joinPlayer(conn: FakeConn, playerId: string, displayName: string) {
+    conns.push(conn);
+    room.onMessage(conn as never, JSON.stringify({ type: "hello", playerId, displayName }));
+    vi.clearAllMocks();
+    conn._sent.length = 0;
+  }
+
+  function addWords(conn: FakeConn, words: string[]) {
+    for (const text of words) {
+      room.onMessage(conn as never, JSON.stringify({ type: "submitWord", text }));
+    }
+  }
+
+  function getBroadcast() {
+    return (room as unknown as { broadcast: ReturnType<typeof vi.fn> }).broadcast;
+  }
+
+  function extractBoardFromConn(conn: FakeConn) {
+    const msgStr = conn._sent.find((m) => JSON.parse(m).type === "boardAssigned");
+    expect(msgStr, "conn should have received a boardAssigned message").toBeDefined();
+    return JSON.parse(msgStr!) as { type: "boardAssigned"; cells: Array<{ cellId: string; wordId: string | null; text: string | null; blank: boolean }> };
+  }
+
+  it("startGame broadcasts gameStarted first, then sends per-connection boardAssigned (BOAR-01, BOAR-03)", () => {
+    const host = makeConn("c1");
+    const peer = makeConn("c2");
+    joinPlayer(host, "p1", "Alice");
+    joinPlayer(peer, "p2", "Bob");
+    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    vi.clearAllMocks();
+    host._sent.length = 0; peer._sent.length = 0;
+
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+
+    // Broadcast fired with gameStarted
+    expect(getBroadcast()).toHaveBeenCalled();
+    const firstBroadcast = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(firstBroadcast.type).toBe("gameStarted");
+
+    // Each connection received its own boardAssigned via conn.send (not broadcast)
+    const hostBoard = extractBoardFromConn(host);
+    const peerBoard = extractBoardFromConn(peer);
+    expect(hostBoard.type).toBe("boardAssigned");
+    expect(peerBoard.type).toBe("boardAssigned");
+    // Per-player nanoid cellIds guarantee difference even if same permutation
+    expect(hostBoard.cells[0].cellId).not.toBe(peerBoard.cells[0].cellId);
+  });
+
+  it("board has cellCount cells with blanks filling the remainder (BOAR-04)", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+
+    const board = extractBoardFromConn(host);
+    // 5 words → 3x3 tier → 9 cells. 5 words + 4 blanks.
+    expect(board.cells).toHaveLength(9);
+    const wordCells = board.cells.filter((c) => !c.blank);
+    const blankCells = board.cells.filter((c) => c.blank);
+    expect(wordCells).toHaveLength(5);
+    expect(blankCells).toHaveLength(4);
+    wordCells.forEach((c) => {
+      expect(c.wordId).not.toBeNull();
+      expect(c.text).not.toBeNull();
+    });
+    blankCells.forEach((c) => {
+      expect(c.wordId).toBeNull();
+      expect(c.text).toBeNull();
+    });
+  });
+
+  it("two connections receive different boards — independent shuffles (BOAR-01, BOAR-02)", () => {
+    const host = makeConn("c1");
+    const peer = makeConn("c2");
+    joinPlayer(host, "p1", "Alice");
+    joinPlayer(peer, "p2", "Bob");
+    // 21 words → 5x5 tier → 25 cells (4 blanks). Bigger search space → shuffle collision chance ≈ 1/25!
+    const words = Array.from({ length: 21 }, (_, i) => `Word${i}`);
+    addWords(host, words);
+    host._sent.length = 0; peer._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+
+    const hostBoard = extractBoardFromConn(host).cells.map((c) => c.wordId ?? "BLANK");
+    const peerBoard = extractBoardFromConn(peer).cells.map((c) => c.wordId ?? "BLANK");
+    expect(hostBoard).not.toEqual(peerBoard);
+  });
+
+  it("markWord on a valid word cell toggles mark and broadcasts wordMarked with minimal payload (BOAR-05, BOAR-06)", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+
+    const board = extractBoardFromConn(host);
+    const firstWordCell = board.cells.find((c) => !c.blank)!;
+    vi.clearAllMocks();
+
+    room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: firstWordCell.cellId }));
+
+    expect(getBroadcast()).toHaveBeenCalledOnce();
+    const payload = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(payload).toEqual({ type: "wordMarked", playerId: "p1", markCount: 1 });
+    // Strict key check — no cellId, text, wordId, or other fields leaked
+    expect(Object.keys(payload).sort()).toEqual(["markCount", "playerId", "type"]);
+  });
+
+  it("markWord second time on same cell unmarks (toggle idempotency)", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+    const board = extractBoardFromConn(host);
+    const cell = board.cells.find((c) => !c.blank)!;
+
+    room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: cell.cellId }));
+    vi.clearAllMocks();
+    room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: cell.cellId }));
+
+    expect(getBroadcast()).toHaveBeenCalledOnce();
+    const payload = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(payload).toEqual({ type: "wordMarked", playerId: "p1", markCount: 0 });
+  });
+
+  it("markWord on a blank cellId is silently dropped (no broadcast)", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+    const board = extractBoardFromConn(host);
+    const blankCell = board.cells.find((c) => c.blank)!;
+    vi.clearAllMocks();
+
+    room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: blankCell.cellId }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("markWord on a cellId not on the player's own board is silently dropped (authorization)", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+    vi.clearAllMocks();
+
+    room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: "nonexistent-cell-id" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("markWord when phase is 'lobby' is silently dropped", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    vi.clearAllMocks();
+
+    room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: "any" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("markWord by a pre-hello connection (no playerId in conn.state) is silently dropped", () => {
+    const stranger = makeConn("c-stranger");
+    // Do NOT call joinPlayer — conn.state stays null/undefined
+    conns.push(stranger);
+    vi.clearAllMocks();
+
+    room.onMessage(stranger as never, JSON.stringify({ type: "markWord", cellId: "any" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("startGame skips connections that have not sent hello (Pitfall 4)", () => {
+    const host = makeConn("c1");
+    const stranger = makeConn("c-stranger");
+    joinPlayer(host, "p1", "Alice");
+    conns.push(stranger); // pushed but never sent hello
+    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    host._sent.length = 0; stranger._sent.length = 0;
+
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+
+    const hostMsgs = host._sent.map((m) => JSON.parse(m).type);
+    const strangerMsgs = stranger._sent.map((m) => JSON.parse(m).type);
+    expect(hostMsgs).toContain("boardAssigned");
+    expect(strangerMsgs).not.toContain("boardAssigned"); // pre-hello conn skipped
+  });
+
+  it("wordMarked broadcast payload contains only type, playerId, markCount keys — nothing else", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+    const board = extractBoardFromConn(host);
+    const wordCell = board.cells.find((c) => !c.blank)!;
+    vi.clearAllMocks();
+
+    room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: wordCell.cellId }));
+
+    const payload = JSON.parse(getBroadcast().mock.calls[0][0]);
+    expect(Object.keys(payload).sort()).toEqual(["markCount", "playerId", "type"]);
   });
 });
