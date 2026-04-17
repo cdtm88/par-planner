@@ -72,6 +72,12 @@ vi.mock("partyserver", () => {
     // broadcast is provided by PartyServer at runtime; we stub it here.
     broadcast = vi.fn();
 
+    // getConnections is provided by PartyServer at runtime; default returns empty iterable.
+    // Phase 3 tests override this per-instance in their beforeEach.
+    getConnections(): Iterable<unknown> {
+      return [];
+    }
+
     // Lifecycle stubs — subclass overrides.
     onStart() {}
     onConnect(_conn: unknown, _ctx: unknown) {}

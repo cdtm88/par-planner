@@ -17,8 +17,11 @@ import {
   type Player,
   type RoomState,
   type WordEntry,
+  type BoardCell,
 } from "../src/lib/protocol/messages.js";
 import { STARTER_PACKS } from "../src/lib/util/starterPacks.js";
+import { shuffle } from "../src/lib/util/shuffle.js";
+import { deriveGridTier } from "../src/lib/util/gridTier.js";
 import { nanoid } from "nanoid";
 
 // 30 minutes idle before the room is reaped (RESEARCH.md §Open Question 2, A1).
@@ -40,6 +43,8 @@ export class GameRoom extends Server<Env> {
   #words = new Map<string, WordEntry>();
   #phase: "lobby" | "playing" = "lobby";
   #usedPacks = new Set<string>();
+  #boards = new Map<string, BoardCell[]>();   // playerId → that player's cells
+  #marks = new Map<string, Set<string>>();    // playerId → set of marked cellIds
 
   async onStart() {
     this.#active = (await this.ctx.storage.get<boolean>("active")) ?? false;
@@ -177,13 +182,57 @@ export class GameRoom extends Server<Env> {
 
       case "startGame": {
         const connState = conn.state as { playerId?: string } | null;
-        if (connState?.playerId !== this.#hostId) return;
+        if (connState?.playerId !== this.#hostId) return;          // host-only guard
         if (this.#words.size < 5) {
           conn.send(JSON.stringify({ type: "error", code: "not_enough_words" }));
           return;
         }
         this.#phase = "playing";
-        this.broadcast(JSON.stringify({ type: "roomState", state: this.#snapshot() }));
+
+        // PITFALL 8: broadcast gameStarted FIRST so every client mounts <Board/> before
+        // their boardAssigned arrives. WS is FIFO per connection, so this ordering is
+        // visible to each client in the same order it leaves the DO.
+        this.broadcast(JSON.stringify({ type: "gameStarted" }));
+
+        // Per-connection private board delivery (BOAR-03 — NEVER broadcast).
+        const wordPool = [...this.#words.values()];
+        for (const c of this.getConnections()) {
+          const s = c.state as { playerId?: string } | null;
+          if (!s?.playerId) continue;                                // pre-hello connection — skip
+          const cells = this.#buildBoardForPlayer(wordPool);
+          this.#boards.set(s.playerId, cells);
+          this.#marks.set(s.playerId, new Set());
+          c.send(JSON.stringify({ type: "boardAssigned", cells }));
+        }
+        return;
+      }
+
+      case "markWord": {
+        const connState = conn.state as { playerId?: string } | null;
+        if (!connState?.playerId) return;                            // pre-hello — silent drop
+        if (this.#phase !== "playing") return;                       // phase guard
+
+        const myBoard = this.#boards.get(connState.playerId);
+        const myMarks = this.#marks.get(connState.playerId);
+        if (!myBoard || !myMarks) return;                            // board not dealt — silent drop
+
+        const { cellId } = result.output;
+
+        // AUTHORIZATION (V4 Access Control / T-3-02):
+        // The cellId must be on THIS player's own board, not blank.
+        const cell = myBoard.find((c) => c.cellId === cellId);
+        if (!cell || cell.blank) return;                             // not owner's cell OR blank — silent drop
+
+        // Toggle — UI-SPEC: second tap unmarks.
+        if (myMarks.has(cellId)) myMarks.delete(cellId);
+        else myMarks.add(cellId);
+
+        // BROADCAST: strict payload shape — no layout fields (BOAR-06).
+        this.broadcast(JSON.stringify({
+          type: "wordMarked",
+          playerId: connState.playerId,
+          markCount: myMarks.size,
+        }));
         return;
       }
     }
@@ -260,6 +309,30 @@ export class GameRoom extends Server<Env> {
     }
 
     return new Response("Not Found", { status: 404 });
+  }
+
+  #buildBoardForPlayer(wordPool: WordEntry[]): BoardCell[] {
+    const tier = deriveGridTier(wordPool.length);
+    const cellCount = tier === "5x5" ? 25 : tier === "4x4" ? 16 : 9;
+
+    // Copy-per-player (Pitfall 5: never reuse the shuffled array across players).
+    const shuffled = shuffle([...wordPool]);
+    const wordCells: BoardCell[] = shuffled.slice(0, cellCount).map((w) => ({
+      cellId: nanoid(),
+      wordId: w.wordId,
+      text: w.text,
+      blank: false,
+    }));
+    const blankCount = Math.max(0, cellCount - wordCells.length);
+    const blankCells: BoardCell[] = Array.from({ length: blankCount }, () => ({
+      cellId: nanoid(),
+      wordId: null,
+      text: null,
+      blank: true,
+    }));
+
+    // Fill-tail then shuffle the combined array so blanks are uniformly distributed.
+    return shuffle([...wordCells, ...blankCells]);
   }
 
   #snapshot(): RoomState {
