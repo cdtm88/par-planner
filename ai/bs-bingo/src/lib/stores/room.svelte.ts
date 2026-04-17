@@ -24,6 +24,7 @@ export function createRoomStore(code: string) {
   let status = $state<"connecting" | "open" | "reconnecting" | "closed">("connecting");
   let words = $state<WordEntry[]>([]);
   let usedPacks = $state<Set<string>>(new Set());
+  let lastError = $state<{ code: string; message?: string } | null>(null);
 
   connection.status = "connecting";
 
@@ -73,7 +74,10 @@ export function createRoomStore(code: string) {
         if (state) state.players = state.players.filter((p) => p.playerId !== msg.playerId);
         break;
       case "error":
-        console.warn("Server error:", msg.code, msg.message);
+        lastError = { code: msg.code, message: msg.message };
+        break;
+      case "gameStarted":
+        if (state) state = { ...state, phase: "playing" };
         break;
       case "wordAdded":
         if (!words.some((w) => w.wordId === msg.word.wordId)) {
@@ -101,6 +105,12 @@ export function createRoomStore(code: string) {
     },
     get usedPacks() {
       return usedPacks;
+    },
+    get lastError() {
+      return lastError;
+    },
+    clearError() {
+      lastError = null;
     },
     disconnect() {
       ws.close();
