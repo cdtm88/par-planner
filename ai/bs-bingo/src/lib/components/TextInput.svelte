@@ -11,6 +11,7 @@
     onsubmit?: () => void;
     oninput?: (e: Event) => void;
     id?: string;
+    shake?: boolean;
   };
 
   let {
@@ -25,6 +26,7 @@
     onsubmit,
     oninput,
     id,
+    shake = false,
   }: TextInputProps = $props();
 
   const inputId = $derived(id ?? `input-${label.toLowerCase().replace(/\s+/g, "-")}`);
@@ -36,9 +38,9 @@
     "font-mono uppercase tracking-[0.2em] text-center text-lg";
 
   const inputClasses = $derived(
-    variant === "code"
+    (variant === "code"
       ? `${baseInputClasses} ${codeInputClasses}`
-      : baseInputClasses
+      : baseInputClasses) + (shake ? " shake" : "")
   );
 </script>
 
