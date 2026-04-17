@@ -15,6 +15,17 @@ export const WordEntry = v.object({
 });
 export type WordEntry = v.InferOutput<typeof WordEntry>;
 
+// --- Phase 3: per-cell payload for boardAssigned (BOAR-01..04) ---
+// BoardCell is never broadcast in RoomState — it travels only in the per-player
+// boardAssigned ServerMessage (BOAR-03 privacy).
+export const BoardCell = v.object({
+  cellId: v.string(),
+  wordId: v.nullable(v.string()),
+  text: v.nullable(v.string()),
+  blank: v.boolean(),
+});
+export type BoardCell = v.InferOutput<typeof BoardCell>;
+
 export const RoomState = v.object({
   code: v.string(),
   phase: v.union([v.literal("lobby"), v.literal("playing")]),
@@ -45,6 +56,10 @@ export const ClientMessage = v.variant("type", [
     pack: v.picklist(["corporate-classics", "agile", "sales"]),
   }),
   v.object({ type: v.literal("startGame") }),
+  v.object({
+    type: v.literal("markWord"),
+    cellId: v.pipe(v.string(), v.minLength(1)),
+  }),
 ]);
 export type ClientMessage = v.InferOutput<typeof ClientMessage>;
 
@@ -57,6 +72,12 @@ export const ServerMessage = v.variant("type", [
   v.object({ type: v.literal("wordAdded"), word: WordEntry }),
   v.object({ type: v.literal("wordRemoved"), wordId: v.string() }),
   v.object({ type: v.literal("gameStarted") }),
+  v.object({ type: v.literal("boardAssigned"), cells: v.array(BoardCell) }),
+  v.object({
+    type: v.literal("wordMarked"),
+    playerId: v.pipe(v.string(), v.minLength(1)),
+    markCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  }),
 ]);
 export type ServerMessage = v.InferOutput<typeof ServerMessage>;
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as v from "valibot";
-import { ClientMessage, ServerMessage, Player, RoomState, WordEntry } from "../../src/lib/protocol/messages";
+import { ClientMessage, ServerMessage, Player, RoomState, WordEntry, BoardCell } from "../../src/lib/protocol/messages";
 
 describe("ClientMessage", () => {
   it("accepts a valid hello message", () => {
@@ -89,6 +89,18 @@ describe("ClientMessage", () => {
     const r = v.safeParse(ClientMessage, { type: "startGame" });
     expect(r.success).toBe(true);
   });
+  it("accepts markWord with non-empty cellId", () => {
+    const r = v.safeParse(ClientMessage, { type: "markWord", cellId: "cell-abc" });
+    expect(r.success).toBe(true);
+  });
+  it("rejects markWord with empty cellId", () => {
+    const r = v.safeParse(ClientMessage, { type: "markWord", cellId: "" });
+    expect(r.success).toBe(false);
+  });
+  it("rejects markWord missing cellId", () => {
+    const r = v.safeParse(ClientMessage, { type: "markWord" });
+    expect(r.success).toBe(false);
+  });
 });
 
 describe("ServerMessage", () => {
@@ -162,6 +174,40 @@ describe("ServerMessage", () => {
     const r = v.safeParse(ServerMessage, { type: "gameStarted" });
     expect(r.success).toBe(true);
   });
+  it("accepts boardAssigned with cells array (word + blank cells)", () => {
+    const r = v.safeParse(ServerMessage, {
+      type: "boardAssigned",
+      cells: [
+        { cellId: "c1", wordId: "w1", text: "Synergy", blank: false },
+        { cellId: "c2", wordId: null, text: null, blank: true },
+      ],
+    });
+    expect(r.success).toBe(true);
+  });
+  it("accepts boardAssigned with empty cells array", () => {
+    const r = v.safeParse(ServerMessage, { type: "boardAssigned", cells: [] });
+    expect(r.success).toBe(true);
+  });
+  it("accepts wordMarked with playerId and non-negative markCount", () => {
+    const r = v.safeParse(ServerMessage, { type: "wordMarked", playerId: "p1", markCount: 3 });
+    expect(r.success).toBe(true);
+  });
+  it("accepts wordMarked with markCount = 0", () => {
+    const r = v.safeParse(ServerMessage, { type: "wordMarked", playerId: "p1", markCount: 0 });
+    expect(r.success).toBe(true);
+  });
+  it("rejects wordMarked with negative markCount", () => {
+    const r = v.safeParse(ServerMessage, { type: "wordMarked", playerId: "p1", markCount: -1 });
+    expect(r.success).toBe(false);
+  });
+  it("rejects wordMarked with non-integer markCount", () => {
+    const r = v.safeParse(ServerMessage, { type: "wordMarked", playerId: "p1", markCount: 1.5 });
+    expect(r.success).toBe(false);
+  });
+  it("rejects wordMarked with empty playerId", () => {
+    const r = v.safeParse(ServerMessage, { type: "wordMarked", playerId: "", markCount: 0 });
+    expect(r.success).toBe(false);
+  });
 });
 
 describe("Player schema", () => {
@@ -228,5 +274,24 @@ describe("WordEntry schema", () => {
   it("accepts valid WordEntry", () => {
     const r = v.safeParse(WordEntry, { wordId: "w1", text: "Synergy", submittedBy: "p1" });
     expect(r.success).toBe(true);
+  });
+});
+
+describe("BoardCell schema", () => {
+  it("accepts word cell (wordId + text + blank:false)", () => {
+    const r = v.safeParse(BoardCell, { cellId: "c1", wordId: "w1", text: "Synergy", blank: false });
+    expect(r.success).toBe(true);
+  });
+  it("accepts blank cell (null wordId + null text + blank:true)", () => {
+    const r = v.safeParse(BoardCell, { cellId: "c2", wordId: null, text: null, blank: true });
+    expect(r.success).toBe(true);
+  });
+  it("rejects cell missing blank flag", () => {
+    const r = v.safeParse(BoardCell, { cellId: "c3", wordId: "w1", text: "X" });
+    expect(r.success).toBe(false);
+  });
+  it("rejects cell missing cellId", () => {
+    const r = v.safeParse(BoardCell, { wordId: "w1", text: "X", blank: false });
+    expect(r.success).toBe(false);
   });
 });
