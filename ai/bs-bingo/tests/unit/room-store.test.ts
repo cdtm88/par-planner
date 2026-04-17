@@ -197,4 +197,120 @@ describe("createRoomStore", () => {
     store.disconnect();
     expect(ws.closed).toBe(true);
   });
+
+  it("initial board is null", () => {
+    const store = createRoomStore("ABC123");
+    expect(store.board).toBeNull();
+  });
+
+  it("initial playerMarks is empty object", () => {
+    const store = createRoomStore("ABC123");
+    expect(Object.keys(store.playerMarks)).toHaveLength(0);
+  });
+
+  it("initial markedCellIds is empty Set", () => {
+    const store = createRoomStore("ABC123");
+    expect(store.markedCellIds).toBeInstanceOf(Set);
+    expect(store.markedCellIds.size).toBe(0);
+  });
+
+  it("sets board when boardAssigned message is received", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+
+    const cells = [
+      { cellId: "c1", wordId: "w1", text: "Synergy", blank: false },
+      { cellId: "c2", wordId: null, text: null, blank: true },
+    ];
+    ws.emit("message", { data: JSON.stringify({ type: "boardAssigned", cells }) });
+
+    expect(store.board).toEqual(cells);
+  });
+
+  it("resets markedCellIds to empty Set when boardAssigned is received", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+
+    // Pre-populate markedCellIds
+    store.toggleMark("some-old-cell");
+    expect(store.markedCellIds.size).toBe(1);
+
+    const cells = [{ cellId: "c1", wordId: "w1", text: "New", blank: false }];
+    ws.emit("message", { data: JSON.stringify({ type: "boardAssigned", cells }) });
+
+    expect(store.markedCellIds.size).toBe(0);
+  });
+
+  it("updates playerMarks when wordMarked message is received", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+
+    ws.emit("message", { data: JSON.stringify({ type: "wordMarked", playerId: "p1", markCount: 3 }) });
+
+    expect(store.playerMarks["p1"]).toBe(3);
+  });
+
+  it("wordMarked updates reassign the playerMarks object (immutable, Pitfall 3 analog)", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+
+    const ref1 = store.playerMarks;
+    ws.emit("message", { data: JSON.stringify({ type: "wordMarked", playerId: "p1", markCount: 1 }) });
+    const ref2 = store.playerMarks;
+
+    expect(ref1).not.toBe(ref2);
+    expect(ref2["p1"]).toBe(1);
+  });
+
+  it("wordMarked for multiple players keeps entries independent", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+
+    ws.emit("message", { data: JSON.stringify({ type: "wordMarked", playerId: "p1", markCount: 2 }) });
+    ws.emit("message", { data: JSON.stringify({ type: "wordMarked", playerId: "p2", markCount: 5 }) });
+
+    expect(store.playerMarks["p1"]).toBe(2);
+    expect(store.playerMarks["p2"]).toBe(5);
+  });
+
+  it("toggleMark adds cellId to markedCellIds (optimistic) and sends markWord", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+    ws.lastSent = null;
+
+    store.toggleMark("cell-1");
+
+    expect(store.markedCellIds.has("cell-1")).toBe(true);
+    expect(ws.lastSent).not.toBeNull();
+    expect(JSON.parse(ws.lastSent!)).toEqual({ type: "markWord", cellId: "cell-1" });
+  });
+
+  it("toggleMark a second time removes cellId from markedCellIds (toggle)", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+
+    store.toggleMark("cell-1");
+    expect(store.markedCellIds.has("cell-1")).toBe(true);
+    store.toggleMark("cell-1");
+    expect(store.markedCellIds.has("cell-1")).toBe(false);
+  });
+
+  it("toggleMark reassigns markedCellIds Set reference on each call (Pitfall 3)", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+
+    const ref1 = store.markedCellIds;
+    store.toggleMark("cell-1");
+    const ref2 = store.markedCellIds;
+
+    expect(ref1).not.toBe(ref2);
+  });
 });
