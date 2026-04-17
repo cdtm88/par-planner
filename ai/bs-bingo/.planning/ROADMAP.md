@@ -50,7 +50,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. The "Start Game" control is visible to the host, disabled with an explanatory hint while the minimum word count for the current grid tier is unmet, and enabled the instant the threshold is crossed; non-hosts see a clear "waiting for host to start" state.
 **Plans**: 3 plans
 Plans:
-  - [ ] 02-01-PLAN.md — Define type contracts (Valibot schemas, gridTier utilities, starter pack constants) + unit tests
+  - [x] 02-01-PLAN.md — Define type contracts (Valibot schemas, gridTier utilities, starter pack constants) + unit tests
   - [ ] 02-02-PLAN.md — Extend GameRoom DO with word pool handlers + room store with word state + DO unit tests
   - [ ] 02-03-PLAN.md — Build UI components (WordChip, WordPool, PackPills, GridProgress) + wire into lobby page + human verification
 **UI hint**: yes
