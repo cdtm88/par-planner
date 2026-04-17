@@ -68,8 +68,8 @@ Plans:
 **Plans**: 4 plans
 Plans:
   - [x] 03-01-PLAN.md — Define BoardCell + markWord/boardAssigned/wordMarked message schemas + unbiased Fisher-Yates shuffle utility (BOAR-02)
-  - [ ] 03-02-PLAN.md — Extend GameRoom DO with startGame board-deal (per-connection send), markWord handler, wordMarked broadcast (BOAR-01/02/03/04/06)
-  - [ ] 03-03-PLAN.md — Extend room store with board/playerMarks/markedCellIds/toggleMark + BoardCell.svelte leaf component (BOAR-04/05)
+  - [x] 03-02-PLAN.md — Extend GameRoom DO with startGame board-deal (per-connection send), markWord handler, wordMarked broadcast (BOAR-01/02/03/04/06)
+  - [x] 03-03-PLAN.md — Extend room store with board/playerMarks/markedCellIds/toggleMark + BoardCell.svelte leaf component (BOAR-04/05)
   - [ ] 03-04-PLAN.md — Board.svelte grid + PlayerRow markCount badge + room page wiring + e2e board-mark test (BOAR-04/05/06/07)
 **UI hint**: yes
 
