@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as v from "valibot";
-import { ClientMessage, ServerMessage, Player, RoomState } from "../../src/lib/protocol/messages";
+import { ClientMessage, ServerMessage, Player, RoomState, WordEntry } from "../../src/lib/protocol/messages";
 
 describe("ClientMessage", () => {
   it("accepts a valid hello message", () => {
@@ -56,6 +56,39 @@ describe("ClientMessage", () => {
     const result = v.safeParse(ClientMessage, { type: "unknown" });
     expect(result.success).toBe(false);
   });
+
+  it("accepts submitWord with text 1–30 chars", () => {
+    const r = v.safeParse(ClientMessage, { type: "submitWord", text: "Synergy" });
+    expect(r.success).toBe(true);
+  });
+  it("rejects submitWord with empty text", () => {
+    const r = v.safeParse(ClientMessage, { type: "submitWord", text: "" });
+    expect(r.success).toBe(false);
+  });
+  it("rejects submitWord with text > 30 chars", () => {
+    const r = v.safeParse(ClientMessage, { type: "submitWord", text: "a".repeat(31) });
+    expect(r.success).toBe(false);
+  });
+  it("accepts submitWord with exactly 30 chars", () => {
+    const r = v.safeParse(ClientMessage, { type: "submitWord", text: "a".repeat(30) });
+    expect(r.success).toBe(true);
+  });
+  it("accepts removeWord with wordId", () => {
+    const r = v.safeParse(ClientMessage, { type: "removeWord", wordId: "abc123" });
+    expect(r.success).toBe(true);
+  });
+  it("accepts loadStarterPack with valid pack name", () => {
+    const r = v.safeParse(ClientMessage, { type: "loadStarterPack", pack: "agile" });
+    expect(r.success).toBe(true);
+  });
+  it("rejects loadStarterPack with unknown pack name", () => {
+    const r = v.safeParse(ClientMessage, { type: "loadStarterPack", pack: "unknown" });
+    expect(r.success).toBe(false);
+  });
+  it("accepts startGame", () => {
+    const r = v.safeParse(ClientMessage, { type: "startGame" });
+    expect(r.success).toBe(true);
+  });
 });
 
 describe("ServerMessage", () => {
@@ -79,7 +112,9 @@ describe("ServerMessage", () => {
         code: "ABC234",
         phase: "lobby",
         hostId: "p1",
-        players: []
+        players: [],
+        words: [],
+        usedPacks: [],
       }
     });
     expect(result.success).toBe(true);
@@ -111,6 +146,22 @@ describe("ServerMessage", () => {
     const result = v.safeParse(ServerMessage, { type: "unknown" });
     expect(result.success).toBe(false);
   });
+
+  it("accepts wordAdded message", () => {
+    const r = v.safeParse(ServerMessage, {
+      type: "wordAdded",
+      word: { wordId: "w1", text: "Synergy", submittedBy: "p1" },
+    });
+    expect(r.success).toBe(true);
+  });
+  it("accepts wordRemoved message", () => {
+    const r = v.safeParse(ServerMessage, { type: "wordRemoved", wordId: "w1" });
+    expect(r.success).toBe(true);
+  });
+  it("accepts gameStarted message", () => {
+    const r = v.safeParse(ServerMessage, { type: "gameStarted" });
+    expect(r.success).toBe(true);
+  });
 });
 
 describe("Player schema", () => {
@@ -141,8 +192,41 @@ describe("RoomState schema", () => {
       code: "ABC234",
       phase: "lobby",
       hostId: null,
-      players: []
+      players: [],
+      words: [],
+      usedPacks: [],
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("RoomState — Phase 2 fields", () => {
+  it("accepts roomState with phase 'lobby' and empty words/usedPacks", () => {
+    const r = v.safeParse(RoomState, {
+      code: "ABC234", phase: "lobby", hostId: "p1",
+      players: [], words: [], usedPacks: [],
+    });
+    expect(r.success).toBe(true);
+  });
+  it("accepts roomState with phase 'playing'", () => {
+    const r = v.safeParse(RoomState, {
+      code: "ABC234", phase: "playing", hostId: "p1",
+      players: [], words: [{ wordId: "w1", text: "Synergy", submittedBy: "p1" }],
+      usedPacks: ["agile"],
+    });
+    expect(r.success).toBe(true);
+  });
+  it("rejects roomState without words field", () => {
+    const r = v.safeParse(RoomState, {
+      code: "ABC234", phase: "lobby", hostId: null, players: [],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("WordEntry schema", () => {
+  it("accepts valid WordEntry", () => {
+    const r = v.safeParse(WordEntry, { wordId: "w1", text: "Synergy", submittedBy: "p1" });
+    expect(r.success).toBe(true);
   });
 });
