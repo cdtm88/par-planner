@@ -65,7 +65,12 @@ Plans:
   3. Tapping a word cell toggles it into a visibly marked state on the acting player's board within the same frame.
   4. When one player marks a cell, every other player sees that player's public mark count update within ~1 second, without ever seeing the underlying layout.
   5. The board is fully usable on a phone held in portrait: every cell is at least a 44px tap target, nothing overflows the viewport, and marking works with touch as reliably as with a mouse.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+  - [ ] 03-01-PLAN.md — Define BoardCell + markWord/boardAssigned/wordMarked message schemas + unbiased Fisher-Yates shuffle utility (BOAR-02)
+  - [ ] 03-02-PLAN.md — Extend GameRoom DO with startGame board-deal (per-connection send), markWord handler, wordMarked broadcast (BOAR-01/02/03/04/06)
+  - [ ] 03-03-PLAN.md — Extend room store with board/playerMarks/markedCellIds/toggleMark + BoardCell.svelte leaf component (BOAR-04/05)
+  - [ ] 03-04-PLAN.md — Board.svelte grid + PlayerRow markCount badge + room page wiring + e2e board-mark test (BOAR-04/05/06/07)
 **UI hint**: yes
 
 ### Phase 4: Win Detection, Announcement & Play-Again
@@ -103,7 +108,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation — Transport, Room, Lobby, Presence | 0/5 | Not started | - |
 | 2. Lobby Gameplay — Word Submission & Start | 0/3 | Not started | - |
-| 3. Board Generation & Core Mark Loop | 0/TBD | Not started | - |
+| 3. Board Generation & Core Mark Loop | 0/4 | Not started | - |
 | 4. Win Detection, Announcement & Play-Again | 0/TBD | Not started | - |
 | 5. Resilience & Mobile Hardening | 0/TBD | Not started | - |
 
