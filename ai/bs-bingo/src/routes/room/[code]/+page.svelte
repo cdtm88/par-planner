@@ -7,8 +7,9 @@
   import PackPills from "$lib/components/PackPills.svelte";
   import GridProgress from "$lib/components/GridProgress.svelte";
   import TextInput from "$lib/components/TextInput.svelte";
+  import Board from "$lib/components/Board.svelte";
   import { createRoomStore } from "$lib/stores/room.svelte";
-  import type { RoomState, WordEntry, ClientMessage } from "$lib/protocol/messages";
+  import type { RoomState, WordEntry, ClientMessage, BoardCell } from "$lib/protocol/messages";
   import { Clipboard, Check, Play } from "lucide-svelte";
 
   let { data }: { data: PageData } = $props();
@@ -32,6 +33,10 @@
     send(msg: ClientMessage): void;
     clearError(): void;
     disconnect(): void;
+    board: BoardCell[] | null;
+    playerMarks: Record<string, number>;
+    markedCellIds: Set<string>;
+    toggleMark(cellId: string): void;
   }
 
   // $state<T>(initialValue) generic form avoids Svelte 5 narrowing `null` to `never`
@@ -139,14 +144,29 @@
 <main class="min-h-screen bg-[var(--color-bg)] text-[var(--color-ink-primary)] px-4 py-8 md:py-12">
   <div class="mx-auto max-w-[640px] flex flex-col gap-8">
     {#if gameStarted}
-      <div class="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <h1 class="font-display text-[40px] sm:text-[56px] font-semibold text-[var(--color-accent)]">
-          Game on!
-        </h1>
-        <p class="text-[var(--color-ink-secondary)]">
-          Board generation coming in the next phase.
-        </p>
-      </div>
+      <section class="flex flex-col gap-6">
+        <!-- Players strip with peer mark counts (BOAR-06 — D-07) -->
+        <div class="flex flex-col gap-2">
+          <h2 class="text-sm font-semibold text-[var(--color-ink-secondary)]">
+            Players · {playerCount}
+          </h2>
+          <ul class="flex flex-col gap-1">
+            {#each roomState?.players ?? [] as player (player.playerId)}
+              <PlayerRow
+                {player}
+                markCount={store?.playerMarks?.[player.playerId] ?? 0}
+              />
+            {/each}
+          </ul>
+        </div>
+
+        <!-- Board (BOAR-04, BOAR-05, BOAR-07) -->
+        <Board
+          cells={store?.board ?? null}
+          markedCellIds={store?.markedCellIds ?? new Set()}
+          onToggle={(cellId) => store?.toggleMark(cellId)}
+        />
+      </section>
     {:else}
       <header
         class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-6 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-divider)]"
