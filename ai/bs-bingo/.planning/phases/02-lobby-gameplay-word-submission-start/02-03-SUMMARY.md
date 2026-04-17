@@ -2,7 +2,7 @@
 phase: 02-lobby-gameplay-word-submission-start
 plan: "03"
 subsystem: ui-components
-status: checkpoint_pending
+status: complete
 tags: [ui, components, svelte, lobby, word-pool, real-time]
 dependency_graph:
   requires:
@@ -52,7 +52,7 @@ metrics:
 
 **One-liner:** Four new Svelte components (WordChip, WordPool, PackPills, GridProgress) built to spec and wired into the lobby page; host/non-host conditional rendering, duplicate-rejection shake, and start-game flow all implemented; 123 unit tests still green.
 
-**Status:** CHECKPOINT PENDING — awaiting human verification (Task 3)
+**Status:** COMPLETE — human verification approved
 
 ## Tasks Completed
 
