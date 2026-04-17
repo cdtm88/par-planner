@@ -48,7 +48,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A player can remove a word they personally submitted; they cannot remove words others submitted.
   4. The host can one-click seed the pool from a starter pack (Corporate Classics, Agile, or Sales) and those words merge into the pool without breaking dedupe.
   5. The "Start Game" control is visible to the host, disabled with an explanatory hint while the minimum word count for the current grid tier is unmet, and enabled the instant the threshold is crossed; non-hosts see a clear "waiting for host to start" state.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+  - [ ] 02-01-PLAN.md — Define type contracts (Valibot schemas, gridTier utilities, starter pack constants) + unit tests
+  - [ ] 02-02-PLAN.md — Extend GameRoom DO with word pool handlers + room store with word state + DO unit tests
+  - [ ] 02-03-PLAN.md — Build UI components (WordChip, WordPool, PackPills, GridProgress) + wire into lobby page + human verification
 **UI hint**: yes
 
 ### Phase 3: Board Generation & Core Mark Loop
@@ -98,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Transport, Room, Lobby, Presence | 0/5 | Not started | - |
-| 2. Lobby Gameplay — Word Submission & Start | 0/TBD | Not started | - |
+| 2. Lobby Gameplay — Word Submission & Start | 0/3 | Not started | - |
 | 3. Board Generation & Core Mark Loop | 0/TBD | Not started | - |
 | 4. Win Detection, Announcement & Play-Again | 0/TBD | Not started | - |
 | 5. Resilience & Mobile Hardening | 0/TBD | Not started | - |
