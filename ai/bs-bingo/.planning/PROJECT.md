@@ -18,12 +18,12 @@ Players can join a live game, mark off buzzwords as they're said, and race to be
 - ✓ Host can start the game when ready (minimum 5 words required) — Phase 2
 - ✓ Grid size auto-negotiates from word count (3×3/4×4/5×5) — Phase 2
 - ✓ Host can seed word pool from starter packs (Corporate Classics, Agile, Sales) — Phase 2
+- ✓ Each player receives a uniquely generated bingo board with submitted words in random positions plus blank spaces — Phase 3
+- ✓ Players can click words on their board to mark them off — Phase 3
+- ✓ Mark propagates to all players within 1 second — Phase 3
 
 ### Active
 
-- [ ] Each player receives a uniquely generated bingo board with submitted words in random positions plus blank spaces
-- [ ] Each player receives a uniquely generated bingo board with submitted words in random positions plus blank spaces
-- [ ] Players can click words on their board to mark them off
 - [ ] First player to complete a full line (row, column, or diagonal — including blanks) wins
 - [ ] Win is detected and announced to all players in real time
 
@@ -78,4 +78,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 after Phase 2*
+*Last updated: 2026-04-17 after Phase 3*
