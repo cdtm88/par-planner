@@ -2,8 +2,7 @@
   import { fade } from "svelte/transition";
   import { Crown } from "lucide-svelte";
   import Badge from "./Badge.svelte";
-  import { getPlayerColor } from "$lib/util/playerColor";
-  import { getInitials } from "$lib/util/initials";
+  import { getPlayerEmoji } from "$lib/util/playerEmoji";
 
   type PlayerRowProps = {
     player: {
@@ -16,8 +15,7 @@
 
   let { player, markCount = 0 }: PlayerRowProps = $props();
 
-  const color = $derived(getPlayerColor(player.playerId));
-  const initials = $derived(getInitials(player.displayName));
+  const emoji = $derived(getPlayerEmoji(player.playerId));
 </script>
 
 <li
@@ -25,14 +23,8 @@
   in:fade={{ duration: 120 }}
   out:fade={{ duration: 120 }}
 >
-  <!-- Color circle with initials -->
-  <div
-    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-[#0F0F14]"
-    style="background-color: {color}"
-    aria-hidden="true"
-  >
-    {initials}
-  </div>
+  <!-- Emoji avatar -->
+  <span class="shrink-0 text-2xl leading-none" aria-hidden="true">{emoji}</span>
   <!-- Display name -->
   <span class="flex-1 text-base text-[var(--color-ink-primary)]">
     {player.displayName}

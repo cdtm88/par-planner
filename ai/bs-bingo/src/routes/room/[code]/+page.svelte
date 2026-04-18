@@ -18,7 +18,9 @@
     WinningLine,
   } from "$lib/protocol/messages";
   import { deriveGridTier } from "$lib/util/gridTier";
-  import { Clipboard, Check, Play } from "lucide-svelte";
+  import { Clipboard, Check, Play, Crown } from "lucide-svelte";
+  import { getPlayerEmoji } from "$lib/util/playerEmoji";
+  import { fade } from "svelte/transition";
 
   let { data }: { data: PageData } = $props();
 
@@ -199,8 +201,9 @@
         />
       {/if}
     {:else}
+      <!-- Room code + share -->
       <header
-        class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-6 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-divider)]"
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-divider)]"
       >
         <div>
           <p class="text-sm font-semibold text-[var(--color-ink-secondary)]">Room code</p>
@@ -210,8 +213,8 @@
             {data.code}
           </p>
         </div>
-        <div class="flex flex-col gap-2 md:items-end">
-          <Button variant="secondary" onclick={copyCode} aria-label="Copy room code">
+        <div class="flex flex-col gap-2 w-[148px] shrink-0">
+          <Button variant="secondary" class="w-full" onclick={copyCode} aria-label="Copy room code">
             {#snippet children()}
               {#if copyCodeLabel === "Copied"}
                 <Check size={16} />
@@ -221,7 +224,7 @@
               {copyCodeLabel}
             {/snippet}
           </Button>
-          <Button variant="secondary" onclick={copyLink} aria-label="Copy share link">
+          <Button variant="secondary" class="w-full" onclick={copyLink} aria-label="Copy share link">
             {#snippet children()}
               {#if copyLinkLabel === "Copied"}
                 <Check size={16} />
@@ -234,28 +237,9 @@
         </div>
       </header>
 
+      <!-- Add word + start controls (always visible above word pool) -->
       <section class="flex flex-col gap-4">
-        <h2 class="text-2xl font-semibold">Players · {playerCount}</h2>
-        {#if playerCount < 2}
-          <p class="text-[var(--color-ink-secondary)]">
-            Waiting for players. Share the code or link to get going.
-          </p>
-        {/if}
-        <ul class="flex flex-col gap-2">
-          {#each roomState?.players ?? [] as player (player.playerId)}
-            <PlayerRow {player} />
-          {/each}
-        </ul>
-      </section>
-
-      <WordPool
-        words={store?.words ?? []}
-        playerId={myPlayerId}
-        onDelete={removeWord}
-      />
-
-      <div class="flex flex-col gap-2">
-        <div class="flex flex-col sm:flex-row gap-2">
+        <div class="flex gap-2">
           <div class="flex-1">
             <TextInput
               label="Add a buzzword"
@@ -269,7 +253,7 @@
               id="word-input"
             />
           </div>
-          <div class="sm:self-end">
+          <div class="self-end">
             <Button
               variant="primary"
               onclick={submitWord}
@@ -279,40 +263,67 @@
             </Button>
           </div>
         </div>
-      </div>
 
-      {#if iAmHost}
-        <PackPills
-          usedPacks={store?.usedPacks ?? new Set()}
-          onLoad={loadPack}
-        />
-      {/if}
-
-      <footer class="flex flex-col gap-4">
-        <GridProgress
-          {wordCount}
-          isHost={iAmHost}
-          {hostName}
-        />
         {#if iAmHost}
-          <div class="w-full sm:min-w-[180px]">
-            <Button
-              variant="primary"
-              onclick={startGame}
-              disabled={!canStart}
-            >
-              {#snippet children()}
-                <Play size={16} />
-                Start Game
-              {/snippet}
-            </Button>
-          </div>
+          <PackPills
+            usedPacks={store?.usedPacks ?? new Set()}
+            onLoad={loadPack}
+          />
+        {/if}
+
+        <GridProgress {wordCount} isHost={iAmHost} {hostName} />
+
+        {#if iAmHost}
+          <Button variant="primary" onclick={startGame} disabled={!canStart}>
+            {#snippet children()}
+              <Play size={16} />
+              Start Game
+            {/snippet}
+          </Button>
         {:else}
           <p class="text-base text-[var(--color-ink-secondary)]">
             Waiting for {hostName} to start the game…
           </p>
         {/if}
-      </footer>
+      </section>
+
+      <!-- Players compact chips -->
+      <section class="flex flex-col gap-3">
+        <h2 class="text-sm font-semibold text-[var(--color-ink-secondary)]">
+          Players · {playerCount}
+        </h2>
+        {#if playerCount < 2}
+          <p class="text-sm text-[var(--color-ink-secondary)]">
+            Waiting for players. Share the code or link above.
+          </p>
+        {/if}
+        <div class="flex flex-wrap gap-2">
+          {#each roomState?.players ?? [] as player (player.playerId)}
+            <div
+              transition:fade={{ duration: 120 }}
+              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full
+                     bg-[var(--color-surface)] border border-[var(--color-divider)]"
+            >
+              <span class="text-lg leading-none" aria-hidden="true">
+                {getPlayerEmoji(player.playerId)}
+              </span>
+              <span class="text-sm font-medium text-[var(--color-ink-primary)]">
+                {player.displayName}
+              </span>
+              {#if player.isHost}
+                <Crown size={12} class="text-[var(--color-accent)]" />
+              {/if}
+            </div>
+          {/each}
+        </div>
+      </section>
+
+      <!-- Word pool (scrolls at bottom) -->
+      <WordPool
+        words={store?.words ?? []}
+        playerId={myPlayerId}
+        onDelete={removeWord}
+      />
     {/if}
   </div>
 </main>

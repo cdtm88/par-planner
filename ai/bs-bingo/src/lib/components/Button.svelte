@@ -7,6 +7,7 @@
     disabled?: boolean;
     onclick?: (e: MouseEvent) => void;
     "aria-label"?: string;
+    class?: string;
     children: Snippet;
     leadingIcon?: Snippet;
     trailingIcon?: Snippet;
@@ -18,6 +19,7 @@
     disabled = false,
     onclick,
     "aria-label": ariaLabel,
+    class: extraClass = "",
     children,
     leadingIcon,
     trailingIcon,
@@ -40,7 +42,7 @@
   {disabled}
   {onclick}
   aria-label={ariaLabel}
-  class="{baseClasses} {variantClasses}"
+  class="{baseClasses} {variantClasses} {extraClass}"
 >
   {#if leadingIcon}
     {@render leadingIcon()}
