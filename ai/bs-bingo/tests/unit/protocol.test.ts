@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as v from "valibot";
-import { ClientMessage, ServerMessage, Player, RoomState, WordEntry, BoardCell } from "../../src/lib/protocol/messages";
+import { ClientMessage, ServerMessage, Player, RoomState, WordEntry, BoardCell, WinningLine } from "../../src/lib/protocol/messages";
 
 describe("ClientMessage", () => {
   it("accepts a valid hello message", () => {
@@ -292,6 +292,106 @@ describe("BoardCell schema", () => {
   });
   it("rejects cell missing cellId", () => {
     const r = v.safeParse(BoardCell, { wordId: "w1", text: "X", blank: false });
+    expect(r.success).toBe(false);
+  });
+});
+
+// --- Phase 4: WinningLine object schema ---
+describe("WinningLine schema (Phase 4)", () => {
+  it("accepts valid WinningLine { type: 'row', index: 0 }", () => {
+    const r = v.safeParse(WinningLine, { type: "row", index: 0 });
+    expect(r.success).toBe(true);
+  });
+  it("rejects WinningLine with unknown type 'anti'", () => {
+    const r = v.safeParse(WinningLine, { type: "anti", index: 0 });
+    expect(r.success).toBe(false);
+  });
+  it("rejects WinningLine with negative index", () => {
+    const r = v.safeParse(WinningLine, { type: "col", index: -1 });
+    expect(r.success).toBe(false);
+  });
+});
+
+// --- Phase 4: New ClientMessage variant ---
+describe("ClientMessage — Phase 4 variants", () => {
+  it("accepts startNewGame message (zero payload)", () => {
+    const r = v.safeParse(ClientMessage, { type: "startNewGame" });
+    expect(r.success).toBe(true);
+  });
+
+  // Security gate T-4-03: a forged server message (winDeclared) must NOT parse as ClientMessage
+  it("rejects a forged winDeclared attempted as a ClientMessage (T-4-03)", () => {
+    const r = v.safeParse(ClientMessage, {
+      type: "winDeclared",
+      winnerId: "p1",
+      winnerName: "Evil",
+      winningLine: { type: "row", index: 0 },
+      winningCellIds: [],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+// --- Phase 4: New ServerMessage variants ---
+describe("ServerMessage — Phase 4 variants", () => {
+  it("accepts winDeclared with full payload", () => {
+    const r = v.safeParse(ServerMessage, {
+      type: "winDeclared",
+      winnerId: "p1",
+      winnerName: "Alice",
+      winningLine: { type: "row", index: 0 },
+      winningCellIds: ["c1", "c2", "c3"],
+    });
+    expect(r.success).toBe(true);
+  });
+  it("rejects winDeclared with empty winnerId", () => {
+    const r = v.safeParse(ServerMessage, {
+      type: "winDeclared",
+      winnerId: "",
+      winnerName: "Alice",
+      winningLine: { type: "row", index: 0 },
+      winningCellIds: [],
+    });
+    expect(r.success).toBe(false);
+  });
+  it("rejects winDeclared with negative winningLine.index (via WinningLine)", () => {
+    const r = v.safeParse(ServerMessage, {
+      type: "winDeclared",
+      winnerId: "p1",
+      winnerName: "Alice",
+      winningLine: { type: "row", index: -1 },
+      winningCellIds: [],
+    });
+    expect(r.success).toBe(false);
+  });
+  it("accepts gameReset (zero payload)", () => {
+    const r = v.safeParse(ServerMessage, { type: "gameReset" });
+    expect(r.success).toBe(true);
+  });
+});
+
+// --- Phase 4: RoomState.phase expanded union ---
+describe("RoomState — Phase 4 phase='ended'", () => {
+  it("accepts roomState with phase = 'ended'", () => {
+    const r = v.safeParse(RoomState, {
+      code: "ABC123",
+      phase: "ended",
+      hostId: "p1",
+      players: [],
+      words: [],
+      usedPacks: [],
+    });
+    expect(r.success).toBe(true);
+  });
+  it("rejects roomState with unknown phase 'playing_over'", () => {
+    const r = v.safeParse(RoomState, {
+      code: "ABC123",
+      phase: "playing_over",
+      hostId: "p1",
+      players: [],
+      words: [],
+      usedPacks: [],
+    });
     expect(r.success).toBe(false);
   });
 });
