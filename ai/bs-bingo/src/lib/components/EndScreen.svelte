@@ -30,8 +30,13 @@
 
   const winCellIdSet = $derived(new Set(winningCellIds));
   const winLineLabel = $derived(formatWinLine(winningLine));
-  // Tailwind v4 scanner safety: literal grid-cols-N tokens via $derived ternary.
-  const colsClass = $derived(
+  // Derive cols from board.length (identical to Board.svelte) — more reliable than gridSize prop.
+  // Literal tokens so Tailwind scanner includes all three: grid-cols-3 grid-cols-4 grid-cols-5
+  const boardColsClass = $derived(
+    board?.length === 16 ? "grid-cols-4" : board?.length === 25 ? "grid-cols-5" : "grid-cols-3"
+  );
+  // WinLineIcon still uses gridSize prop (it doesn't have board cells to count from).
+  const iconColsClass = $derived(
     gridSize === 3 ? "grid-cols-3" : gridSize === 4 ? "grid-cols-4" : "grid-cols-5"
   );
 </script>
@@ -72,5 +77,19 @@
     <p class="text-base text-[var(--color-ink-secondary)]">
       Waiting for the host to start a new game.
     </p>
+  {/if}
+
+  {#if board}
+    <div class={["grid w-full gap-2 pointer-events-none", boardColsClass].join(" ")}>
+      {#each board as cell (cell.cellId)}
+        <div data-win-line={winCellIdSet.has(cell.cellId) ? "true" : undefined}>
+          <BoardCellComp
+            {cell}
+            marked={markedCellIds.has(cell.cellId)}
+            onToggle={undefined}
+          />
+        </div>
+      {/each}
+    </div>
   {/if}
 </section>

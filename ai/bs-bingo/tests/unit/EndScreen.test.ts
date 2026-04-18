@@ -94,7 +94,7 @@ describe("EndScreen — winner view", () => {
     expect(el.textContent).toMatch(/Row 1/);
   });
 
-  it("E4: winner view shows WinLineIcon (no frozen board — board removed to avoid jarring resize)", () => {
+  it("E4: winner view renders frozen board with pointer-events-none and correct cell count", () => {
     const el = render(
       baseProps({
         isWinner: true,
@@ -102,14 +102,12 @@ describe("EndScreen — winner view", () => {
         winningCellIds: ["c0", "c1", "c2"],
       })
     );
-    // No full frozen board — WinLineIcon SVG replaces it
-    expect(el.querySelector(".pointer-events-none")).toBeNull();
-    // WinLineIcon renders an svg or role=img element
-    const icon = el.querySelector("svg, [role='img']");
-    expect(icon).not.toBeNull();
+    const grid = el.querySelector(".pointer-events-none");
+    expect(grid).not.toBeNull();
+    expect(grid!.children.length).toBe(9);
   });
 
-  it("E5: winner view does not render individual board cells", () => {
+  it("E5: cells in winningCellIds get data-win-line='true'; others do not", () => {
     const el = render(
       baseProps({
         isWinner: true,
@@ -117,9 +115,10 @@ describe("EndScreen — winner view", () => {
         winningCellIds: ["c0", "c1", "c2"],
       })
     );
-    // No data-win-line attributes — board cells are not rendered
-    const winLineCells = el.querySelectorAll("[data-win-line='true']");
-    expect(winLineCells.length).toBe(0);
+    const grid = el.querySelector(".pointer-events-none")!;
+    const wrappers = Array.from(grid.children) as HTMLElement[];
+    expect(wrappers.filter((w) => w.getAttribute("data-win-line") === "true").length).toBe(3);
+    expect(wrappers.filter((w) => !w.hasAttribute("data-win-line")).length).toBe(6);
   });
 
   it("E6: winner view Start new game button is clickable (no frozen board buttons to conflict)", () => {
