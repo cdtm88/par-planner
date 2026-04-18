@@ -8,8 +8,16 @@
   import GridProgress from "$lib/components/GridProgress.svelte";
   import TextInput from "$lib/components/TextInput.svelte";
   import Board from "$lib/components/Board.svelte";
+  import EndScreen from "$lib/components/EndScreen.svelte";
   import { createRoomStore } from "$lib/stores/room.svelte";
-  import type { RoomState, WordEntry, ClientMessage, BoardCell } from "$lib/protocol/messages";
+  import type {
+    RoomState,
+    WordEntry,
+    ClientMessage,
+    BoardCell,
+    WinningLine,
+  } from "$lib/protocol/messages";
+  import { deriveGridTier } from "$lib/util/gridTier";
   import { Clipboard, Check, Play } from "lucide-svelte";
 
   let { data }: { data: PageData } = $props();
@@ -37,6 +45,10 @@
     playerMarks: Record<string, number>;
     markedCellIds: Set<string>;
     toggleMark(cellId: string): void;
+    winner: { playerId: string; displayName: string } | null;
+    winningLine: WinningLine | null;
+    winningCellIds: string[];
+    startNewGame(): void;
   }
 
   // $state<T>(initialValue) generic form avoids Svelte 5 narrowing `null` to `never`
@@ -85,6 +97,7 @@
   const wordCount = $derived(store ? store.words.length : 0);
   const canStart = $derived(wordCount >= 5);
   const gameStarted = $derived(roomState?.phase === "playing");
+  const phase = $derived<"lobby" | "playing" | "ended">(roomState?.phase ?? "lobby");
 
   async function copyCode() {
     if (typeof navigator === "undefined" || !navigator.clipboard) return;
@@ -143,7 +156,7 @@
 
 <main class="min-h-screen bg-[var(--color-bg)] text-[var(--color-ink-primary)] px-4 py-8 md:py-12">
   <div class="mx-auto max-w-[640px] flex flex-col gap-8">
-    {#if gameStarted}
+    {#if phase === "playing"}
       <section class="flex flex-col gap-6">
         <!-- Players strip with peer mark counts (BOAR-06 — D-07) -->
         <div class="flex flex-col gap-2">
@@ -167,6 +180,22 @@
           onToggle={(cellId) => store?.toggleMark(cellId)}
         />
       </section>
+    {:else if phase === "ended"}
+      {#if store?.winner && store?.winningLine}
+        {@const gridTier = deriveGridTier(roomState?.words.length ?? 0)}
+        {@const gridSize = (gridTier === "3x3" ? 3 : gridTier === "4x4" ? 4 : 5) as 3 | 4 | 5}
+        <EndScreen
+          winner={store.winner}
+          winningLine={store.winningLine}
+          winningCellIds={store.winningCellIds}
+          board={store.winner.playerId === myPlayerId ? store.board : null}
+          markedCellIds={store.markedCellIds}
+          isHost={iAmHost}
+          isWinner={store.winner.playerId === myPlayerId}
+          {gridSize}
+          onStartNewGame={() => store?.startNewGame()}
+        />
+      {/if}
     {:else}
       <header
         class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-6 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-divider)]"
