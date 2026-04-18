@@ -347,6 +347,30 @@ export class GameRoom extends Server<Env> {
         }));
         return;
       }
+
+      case "startNewGame": {
+        // WIN-05 / D-09 / D-13: only the current host may return the room to
+        // lobby. Pre-hello and non-host senders are silently dropped.
+        const connState = conn.state as { playerId?: string } | null;
+        if (!connState?.playerId) return;              // pre-hello — silent drop
+        if (connState.playerId !== this.#hostId) return; // non-host — silent drop
+
+        // Clear only the per-game state. Retain #players, #hostId, #words,
+        // #usedPacks so the same roster can immediately start another round.
+        this.#boards.clear();
+        this.#marks.clear();
+        this.#phase = "lobby";
+
+        // Persist-then-broadcast ordering (Pitfall 1/2): a hibernation between
+        // the broadcast and the puts would leave in-memory and storage out of
+        // sync on rehydrate. Persist all three before announcing.
+        this.#persistBoards();
+        this.#persistMarks();
+        this.#persistPhase();
+
+        this.broadcast(JSON.stringify({ type: "gameReset" }));
+        return;
+      }
     }
   }
 
