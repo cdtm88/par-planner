@@ -36,7 +36,7 @@
   );
 </script>
 
-<section class="flex flex-col items-center gap-6 pt-8">
+<section class="flex flex-col items-center gap-6 pt-8 pb-12">
   {#if isWinner}
     <h1
       class="font-display text-[40px] sm:text-[56px] font-semibold text-[var(--color-accent)] tracking-[0.02em] leading-[1.1]"
@@ -46,19 +46,6 @@
     </h1>
     <p class="text-[24px] font-semibold text-[var(--color-ink-primary)]">{winner.displayName}</p>
     <p class="text-base text-[var(--color-ink-secondary)]">You called it. {winLineLabel}.</p>
-    {#if board}
-      <div class={["grid w-full gap-2 pointer-events-none", colsClass].join(" ")}>
-        {#each board as cell (cell.cellId)}
-          <div data-win-line={winCellIdSet.has(cell.cellId) ? "true" : undefined}>
-            <BoardCellComp
-              {cell}
-              marked={markedCellIds.has(cell.cellId)}
-              onToggle={undefined}
-            />
-          </div>
-        {/each}
-      </div>
-    {/if}
   {:else}
     <h1
       class="text-[24px] font-semibold text-[var(--color-ink-primary)]"
@@ -72,7 +59,7 @@
   {/if}
 
   {#if isHost}
-    <div class="flex flex-col gap-2 w-full sm:w-auto">
+    <div class="flex flex-col items-center gap-2 w-full sm:w-auto">
       <Button variant="primary" onclick={onStartNewGame}>
         {#snippet children()}Start new game{/snippet}
       </Button>
@@ -84,5 +71,19 @@
     <p class="text-base text-[var(--color-ink-secondary)]">
       Waiting for the host to start a new game.
     </p>
+  {/if}
+
+  {#if board}
+    <div class={["grid max-w-xs w-full gap-2 pointer-events-none", colsClass].join(" ")}>
+      {#each board as cell (cell.cellId)}
+        <div data-win-line={winCellIdSet.has(cell.cellId) ? "true" : undefined}>
+          <BoardCellComp
+            {cell}
+            marked={markedCellIds.has(cell.cellId)}
+            onToggle={undefined}
+          />
+        </div>
+      {/each}
+    </div>
   {/if}
 </section>
