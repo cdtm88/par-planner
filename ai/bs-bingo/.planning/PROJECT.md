@@ -21,11 +21,13 @@ Players can join a live game, mark off buzzwords as they're said, and race to be
 - ✓ Each player receives a uniquely generated bingo board with submitted words in random positions plus blank spaces — Phase 3
 - ✓ Players can click words on their board to mark them off — Phase 3
 - ✓ Mark propagates to all players within 1 second — Phase 3
+- ✓ First player to complete a full line wins (server-authoritative, blanks count) — Phase 4
+- ✓ Win detected and announced to all players in real time with celebration moment — Phase 4
+- ✓ Host can reset room for another round without re-joining — Phase 4
 
 ### Active
 
-- [ ] First player to complete a full line (row, column, or diagonal — including blanks) wins
-- [ ] Win is detected and announced to all players in real time
+(No active requirements — Phases 1–4 complete)
 
 ### Out of Scope
 
@@ -78,4 +80,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 after Phase 3*
+*Last updated: 2026-04-18 after Phase 4*
