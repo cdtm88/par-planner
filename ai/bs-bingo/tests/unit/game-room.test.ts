@@ -1107,4 +1107,194 @@ describe("GameRoom — win & reset (Phase 4)", () => {
     room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: "any" }));
     expect(getBroadcast()).not.toHaveBeenCalled();
   });
+
+  // --- Play-again reset behaviours (R1–R11) --------------------------------
+  // startNewGame returns the room to phase="lobby" but RETAINS players, words,
+  // and usedPacks. Only the host may issue it (WIN-05, D-09/D-13).
+
+  /** Drive the room to phase="ended" and clear broadcast history. */
+  function setupEndedGame(playerId = "p1", displayName = "Alice") {
+    const host = makeConn("c1");
+    joinPlayer(host, playerId, displayName);
+    for (let i = 0; i < 5; i++) {
+      room.onMessage(host as never, JSON.stringify({ type: "submitWord", text: `W${i}` }));
+    }
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+    const board = extractBoardFromConn(host);
+    const result = markUntilWin(host, board);
+    expect(result, "expected to reach phase=ended via win").not.toBeNull();
+    getBroadcast().mockClear();
+    (room as unknown as { ctx: { storage: { put: ReturnType<typeof vi.fn> } } }).ctx.storage.put.mockClear();
+    return { host };
+  }
+
+  it("R1: startNewGame from the host broadcasts gameReset", () => {
+    const { host } = setupEndedGame();
+    room.onMessage(host as never, JSON.stringify({ type: "startNewGame" }));
+    const calls = getBroadcast().mock.calls.map((a) => JSON.parse(a[0] as string));
+    const gameReset = calls.find((m) => m.type === "gameReset");
+    expect(gameReset, "gameReset must broadcast on host startNewGame").toBeDefined();
+    // gameReset payload shape: { type: "gameReset" } — no other keys (D-14).
+    expect(Object.keys(gameReset!).sort()).toEqual(["type"]);
+  });
+
+  it("R2: startNewGame from a non-host is silently dropped (no broadcast)", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    for (let i = 0; i < 5; i++) {
+      room.onMessage(host as never, JSON.stringify({ type: "submitWord", text: `W${i}` }));
+    }
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+    // Second player (not host)
+    const other = makeConn("c2");
+    joinPlayer(other, "p2", "Bob");
+    getBroadcast().mockClear();
+
+    room.onMessage(other as never, JSON.stringify({ type: "startNewGame" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("R3: startNewGame from a pre-hello connection is silently dropped", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    for (let i = 0; i < 5; i++) {
+      room.onMessage(host as never, JSON.stringify({ type: "submitWord", text: `W${i}` }));
+    }
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+
+    const stranger = makeConn("c-stranger");
+    conns.push(stranger); // never sent hello → conn.state is null
+    getBroadcast().mockClear();
+
+    room.onMessage(stranger as never, JSON.stringify({ type: "startNewGame" }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("R4: startNewGame persists phase='lobby' to storage", () => {
+    const { host } = setupEndedGame();
+    const storagePut = (room as unknown as { ctx: { storage: { put: ReturnType<typeof vi.fn> } } }).ctx.storage.put;
+
+    room.onMessage(host as never, JSON.stringify({ type: "startNewGame" }));
+
+    const phaseLobbyPut = storagePut.mock.calls.find(
+      (args) => args[0] === "phase" && args[1] === "lobby"
+    );
+    expect(phaseLobbyPut, "storage.put('phase', 'lobby') must fire on startNewGame").toBeDefined();
+  });
+
+  it("R5: startNewGame persists an empty boards array to storage", () => {
+    const { host } = setupEndedGame();
+    const storagePut = (room as unknown as { ctx: { storage: { put: ReturnType<typeof vi.fn> } } }).ctx.storage.put;
+
+    room.onMessage(host as never, JSON.stringify({ type: "startNewGame" }));
+
+    const boardsPut = storagePut.mock.calls.find((args) => args[0] === "boards");
+    expect(boardsPut, "storage.put('boards', ...) must fire on startNewGame").toBeDefined();
+    expect(boardsPut![1]).toEqual([]);
+  });
+
+  it("R6: startNewGame persists an empty marks array to storage", () => {
+    const { host } = setupEndedGame();
+    const storagePut = (room as unknown as { ctx: { storage: { put: ReturnType<typeof vi.fn> } } }).ctx.storage.put;
+
+    room.onMessage(host as never, JSON.stringify({ type: "startNewGame" }));
+
+    const marksPut = storagePut.mock.calls.find((args) => args[0] === "marks");
+    expect(marksPut, "storage.put('marks', ...) must fire on startNewGame").toBeDefined();
+    expect(marksPut![1]).toEqual([]);
+  });
+
+  it("R7: after startNewGame, markWord is silently dropped (phase back to lobby)", () => {
+    const { host } = setupEndedGame();
+    // Capture a word cellId BEFORE the reset wipes boards.
+    const boardBefore = extractBoardFromConn(host);
+    const someWordCell = boardBefore.cells.find((c) => !c.blank)!;
+
+    room.onMessage(host as never, JSON.stringify({ type: "startNewGame" }));
+    getBroadcast().mockClear();
+
+    room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: someWordCell.cellId }));
+
+    expect(getBroadcast()).not.toHaveBeenCalled();
+  });
+
+  it("R8: startNewGame retains #words — starting a new game yields a board", () => {
+    const { host } = setupEndedGame();
+    // Remember word count before reset (the host has 5 submitted words).
+    room.onMessage(host as never, JSON.stringify({ type: "startNewGame" }));
+    host._sent.length = 0;
+    getBroadcast().mockClear();
+
+    // Now host issues startGame again; the retained words should still be
+    // available so the board regenerates successfully.
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+
+    const types = host._sent.map((m) => JSON.parse(m).type);
+    expect(types).toContain("boardAssigned");
+    // Also: gameStarted should have been broadcast (host guard + words present).
+    const gameStarted = getBroadcast().mock.calls
+      .map((a) => JSON.parse(a[0] as string))
+      .find((m) => m.type === "gameStarted");
+    expect(gameStarted).toBeDefined();
+  });
+
+  it("R9: startNewGame retains #players and #hostId — host can still operate post-reset", () => {
+    const { host } = setupEndedGame();
+    const storagePut = (room as unknown as { ctx: { storage: { put: ReturnType<typeof vi.fn> } } }).ctx.storage.put;
+
+    room.onMessage(host as never, JSON.stringify({ type: "startNewGame" }));
+
+    // No storage.put call for "hostId" or "players" should fire on reset —
+    // those are retained (not rewritten) per plan frontmatter.
+    const hostIdPuts = storagePut.mock.calls.filter((args) => args[0] === "hostId");
+    const playersPuts = storagePut.mock.calls.filter((args) => args[0] === "players");
+    expect(hostIdPuts.length, "hostId must NOT be re-persisted on reset").toBe(0);
+    expect(playersPuts.length, "players must NOT be re-persisted on reset").toBe(0);
+
+    // And the host can still issue startGame (proves #hostId still matches).
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+    const types = host._sent.map((m) => JSON.parse(m).type);
+    expect(types).toContain("boardAssigned");
+  });
+
+  it("R10: startNewGame does NOT re-persist #words or #usedPacks (retention only)", () => {
+    const { host } = setupEndedGame();
+    const storagePut = (room as unknown as { ctx: { storage: { put: ReturnType<typeof vi.fn> } } }).ctx.storage.put;
+
+    room.onMessage(host as never, JSON.stringify({ type: "startNewGame" }));
+
+    const wordsPuts = storagePut.mock.calls.filter((args) => args[0] === "words");
+    const usedPacksPuts = storagePut.mock.calls.filter((args) => args[0] === "usedPacks");
+    expect(wordsPuts.length, "words must NOT be re-persisted on reset").toBe(0);
+    expect(usedPacksPuts.length, "usedPacks must NOT be re-persisted on reset").toBe(0);
+  });
+
+  it("R11: startNewGame works from phase='playing' too (not just ended) — host can reset mid-game", () => {
+    const host = makeConn("c1");
+    joinPlayer(host, "p1", "Alice");
+    for (let i = 0; i < 5; i++) {
+      room.onMessage(host as never, JSON.stringify({ type: "submitWord", text: `W${i}` }));
+    }
+    host._sent.length = 0;
+    room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
+    // Now phase === "playing" but no win yet.
+    getBroadcast().mockClear();
+    const storagePut = (room as unknown as { ctx: { storage: { put: ReturnType<typeof vi.fn> } } }).ctx.storage.put;
+    storagePut.mockClear();
+
+    room.onMessage(host as never, JSON.stringify({ type: "startNewGame" }));
+
+    const calls = getBroadcast().mock.calls.map((a) => JSON.parse(a[0] as string));
+    expect(calls.find((m) => m.type === "gameReset"), "gameReset must fire from playing phase too").toBeDefined();
+    expect(
+      storagePut.mock.calls.find((a) => a[0] === "phase" && a[1] === "lobby"),
+      "phase must drop back to 'lobby' from 'playing'"
+    ).toBeDefined();
+  });
 });
