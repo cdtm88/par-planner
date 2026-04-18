@@ -36,7 +36,7 @@
   );
 </script>
 
-<section class="flex flex-col items-center gap-6 pt-8 pb-12">
+<section class="flex flex-col items-center text-center gap-6 pt-8 pb-12">
   {#if isWinner}
     <h1
       class="font-display text-[40px] sm:text-[56px] font-semibold text-[var(--color-accent)] tracking-[0.02em] leading-[1.1]"
@@ -45,6 +45,7 @@
       BINGO!
     </h1>
     <p class="text-[24px] font-semibold text-[var(--color-ink-primary)]">{winner.displayName}</p>
+    <WinLineIcon {gridSize} {winningLine} />
     <p class="text-base text-[var(--color-ink-secondary)]">You called it. {winLineLabel}.</p>
   {:else}
     <h1
@@ -71,19 +72,5 @@
     <p class="text-base text-[var(--color-ink-secondary)]">
       Waiting for the host to start a new game.
     </p>
-  {/if}
-
-  {#if board}
-    <div class={["grid max-w-xs w-full gap-2 pointer-events-none", colsClass].join(" ")}>
-      {#each board as cell (cell.cellId)}
-        <div data-win-line={winCellIdSet.has(cell.cellId) ? "true" : undefined}>
-          <BoardCellComp
-            {cell}
-            marked={markedCellIds.has(cell.cellId)}
-            onToggle={undefined}
-          />
-        </div>
-      {/each}
-    </div>
   {/if}
 </section>

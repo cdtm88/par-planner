@@ -94,48 +94,45 @@ describe("EndScreen — winner view", () => {
     expect(el.textContent).toMatch(/Row 1/);
   });
 
-  it("E4: renders a frozen board container with pointer-events-none and one child div per cell", () => {
-    const board = makeBoard(9);
+  it("E4: winner view shows WinLineIcon (no frozen board — board removed to avoid jarring resize)", () => {
     const el = render(
       baseProps({
         isWinner: true,
-        board,
+        board: makeBoard(9),
         winningCellIds: ["c0", "c1", "c2"],
       })
     );
-    const grid = el.querySelector(".pointer-events-none");
-    expect(grid).not.toBeNull();
-    const wrappers = grid!.children;
-    expect(wrappers.length).toBe(9);
+    // No full frozen board — WinLineIcon SVG replaces it
+    expect(el.querySelector(".pointer-events-none")).toBeNull();
+    // WinLineIcon renders an svg or role=img element
+    const icon = el.querySelector("svg, [role='img']");
+    expect(icon).not.toBeNull();
   });
 
-  it("E5: cells whose cellId is in winningCellIds get data-win-line='true'; others do NOT", () => {
-    const board = makeBoard(9);
+  it("E5: winner view does not render individual board cells", () => {
     const el = render(
       baseProps({
         isWinner: true,
-        board,
+        board: makeBoard(9),
         winningCellIds: ["c0", "c1", "c2"],
       })
     );
-    const grid = el.querySelector(".pointer-events-none")!;
-    const wrappers = Array.from(grid.children) as HTMLElement[];
-    const withAttr = wrappers.filter((w) => w.getAttribute("data-win-line") === "true");
-    const withoutAttr = wrappers.filter((w) => !w.hasAttribute("data-win-line"));
-    expect(withAttr.length).toBe(3);
-    expect(withoutAttr.length).toBe(6);
+    // No data-win-line attributes — board cells are not rendered
+    const winLineCells = el.querySelectorAll("[data-win-line='true']");
+    expect(winLineCells.length).toBe(0);
   });
 
-  it("E6: clicking a frozen BoardCell button does not fire any toggle (onToggle=undefined)", () => {
-    const board = makeBoard(9);
+  it("E6: winner view Start new game button is clickable (no frozen board buttons to conflict)", () => {
+    const onStartNewGame = vi.fn();
     const el = render(
       baseProps({
         isWinner: true,
-        board,
+        isHost: true,
+        board: makeBoard(9),
         winningCellIds: ["c0", "c1", "c2"],
+        onStartNewGame,
       })
     );
-    // No crash when clicking — just verify the action completes.
     const btn = el.querySelector("button") as HTMLButtonElement | null;
     expect(btn).not.toBeNull();
     expect(() => btn!.click()).not.toThrow();
