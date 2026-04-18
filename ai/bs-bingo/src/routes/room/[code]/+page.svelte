@@ -188,6 +188,7 @@
           winner={store.winner}
           winningLine={store.winningLine}
           winningCellIds={store.winningCellIds}
+          winningWords={store.winningWords}
           board={store.winner.playerId === myPlayerId ? store.board : null}
           markedCellIds={store.markedCellIds}
           isHost={iAmHost}

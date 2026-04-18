@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { BoardCell, WinningLine } from "$lib/protocol/messages";
-  import BoardCellComp from "./BoardCell.svelte";
   import WinLineIcon from "./WinLineIcon.svelte";
   import Button from "./Button.svelte";
   import { formatWinLine } from "$lib/util/winLine";
@@ -9,6 +8,7 @@
     winner: { playerId: string; displayName: string };
     winningLine: WinningLine;
     winningCellIds: string[];
+    winningWords: string[];
     board: BoardCell[] | null;
     markedCellIds: Set<string>;
     isHost: boolean;
@@ -19,26 +19,14 @@
   let {
     winner,
     winningLine,
-    winningCellIds,
-    board,
-    markedCellIds,
+    winningWords,
     isHost,
     isWinner,
     gridSize,
     onStartNewGame,
   }: Props = $props();
 
-  const winCellIdSet = $derived(new Set(winningCellIds));
   const winLineLabel = $derived(formatWinLine(winningLine));
-  // Derive cols from board.length (identical to Board.svelte) — more reliable than gridSize prop.
-  // Literal tokens so Tailwind scanner includes all three: grid-cols-3 grid-cols-4 grid-cols-5
-  const boardColsClass = $derived(
-    board?.length === 16 ? "grid-cols-4" : board?.length === 25 ? "grid-cols-5" : "grid-cols-3"
-  );
-  // WinLineIcon still uses gridSize prop (it doesn't have board cells to count from).
-  const iconColsClass = $derived(
-    gridSize === 3 ? "grid-cols-3" : gridSize === 4 ? "grid-cols-4" : "grid-cols-5"
-  );
 </script>
 
 <section class="flex flex-col items-center text-center gap-6 pt-8 pb-12">
@@ -50,8 +38,6 @@
       BINGO!
     </h1>
     <p class="text-[24px] font-semibold text-[var(--color-ink-primary)]">{winner.displayName}</p>
-    <WinLineIcon {gridSize} {winningLine} />
-    <p class="text-base text-[var(--color-ink-secondary)]">You called it. {winLineLabel}.</p>
   {:else}
     <h1
       class="text-[24px] font-semibold text-[var(--color-ink-primary)]"
@@ -59,8 +45,28 @@
     >
       {winner.displayName} got Bingo!
     </h1>
-    <WinLineIcon {gridSize} {winningLine} />
-    <p class="text-base text-[var(--color-ink-secondary)]">{winLineLabel} completed.</p>
+  {/if}
+
+  <WinLineIcon {gridSize} {winningLine} />
+
+  <p class="text-base text-[var(--color-ink-secondary)]">
+    {isWinner ? "You called it." : ""} {winLineLabel}{isWinner ? "." : " completed."}
+  </p>
+
+  {#if winningWords.length > 0}
+    <div class="flex flex-wrap justify-center gap-2" aria-label="Winning words">
+      {#each winningWords as word}
+        <span
+          class="px-3 py-1.5 rounded-full text-sm font-semibold
+                 bg-[var(--color-accent)] text-[var(--color-ink-inverse)]"
+        >
+          {word}
+        </span>
+      {/each}
+    </div>
+  {/if}
+
+  {#if !isWinner}
     <p class="text-base text-[var(--color-ink-secondary)]">Nice try. One more round?</p>
   {/if}
 
@@ -77,19 +83,5 @@
     <p class="text-base text-[var(--color-ink-secondary)]">
       Waiting for the host to start a new game.
     </p>
-  {/if}
-
-  {#if board}
-    <div class={["grid w-full gap-2 pointer-events-none", boardColsClass].join(" ")}>
-      {#each board as cell (cell.cellId)}
-        <div data-win-line={winCellIdSet.has(cell.cellId) ? "true" : undefined}>
-          <BoardCellComp
-            {cell}
-            marked={markedCellIds.has(cell.cellId)}
-            onToggle={undefined}
-          />
-        </div>
-      {/each}
-    </div>
   {/if}
 </section>

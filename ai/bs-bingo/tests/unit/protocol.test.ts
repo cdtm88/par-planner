@@ -341,6 +341,7 @@ describe("ServerMessage — Phase 4 variants", () => {
       winnerName: "Alice",
       winningLine: { type: "row", index: 0 },
       winningCellIds: ["c1", "c2", "c3"],
+      winningWords: ["Alpha", "Beta", "Gamma"],
     });
     expect(r.success).toBe(true);
   });

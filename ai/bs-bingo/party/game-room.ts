@@ -338,12 +338,18 @@ export class GameRoom extends Server<Env> {
         const winnerPlayer = this.#players.get(connState.playerId);
         const winnerName = winnerPlayer?.displayName ?? "Someone";
 
+        const winningWords = win.winningCellIds
+          .map(id => myBoard.find(c => c.cellId === id))
+          .filter((c): c is BoardCell => !!c && !c.blank && c.text !== null)
+          .map(c => c.text as string);
+
         this.broadcast(JSON.stringify({
           type: "winDeclared",
           winnerId: connState.playerId,
           winnerName,
           winningLine: win.winningLine,
           winningCellIds: win.winningCellIds,
+          winningWords,
         }));
         return;
       }

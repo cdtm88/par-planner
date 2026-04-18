@@ -347,7 +347,7 @@ describe("createRoomStore — Phase 4 (win + reset)", () => {
 
   function emitWinDeclared(
     ws: InstanceType<typeof MockPartySocket>,
-    opts: { winnerId: string; winnerName?: string; line?: WinLine; cellIds?: string[] }
+    opts: { winnerId: string; winnerName?: string; line?: WinLine; cellIds?: string[]; words?: string[] }
   ) {
     ws.emit("message", {
       data: JSON.stringify({
@@ -356,6 +356,7 @@ describe("createRoomStore — Phase 4 (win + reset)", () => {
         winnerName: opts.winnerName ?? "Alice",
         winningLine: opts.line ?? { type: "row", index: 0 },
         winningCellIds: opts.cellIds ?? ["c1", "c2", "c3"],
+        winningWords: opts.words ?? ["Alpha", "Beta", "Gamma"],
       }),
     });
   }
