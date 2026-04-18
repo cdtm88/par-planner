@@ -7,6 +7,7 @@ import {
   type WordEntry,
   type ClientMessage,
   type BoardCell,
+  type WinningLine,
 } from "$lib/protocol/messages";
 import { getOrCreatePlayer } from "$lib/session";
 
@@ -29,6 +30,9 @@ export function createRoomStore(code: string) {
   let board = $state<BoardCell[] | null>(null);
   let playerMarks = $state<Record<string, number>>({});
   let markedCellIds = $state<Set<string>>(new Set());
+  let winner = $state<{ playerId: string; displayName: string } | null>(null);
+  let winningLine = $state<WinningLine | null>(null);
+  let winningCellIds = $state<string[]>([]);
 
   connection.status = "connecting";
 
@@ -100,6 +104,55 @@ export function createRoomStore(code: string) {
         // Reassign the object (Pitfall 3 analog) so runes see the change.
         playerMarks = { ...playerMarks, [msg.playerId]: msg.markCount };
         break;
+      case "winDeclared": {
+        winner = { playerId: msg.winnerId, displayName: msg.winnerName };
+        winningLine = msg.winningLine;
+        winningCellIds = msg.winningCellIds;
+        if (state) state = { ...state, phase: "ended" };
+
+        // Fire confetti ONLY on the winner's client, ONLY in a browser.
+        // Dynamic import keeps canvas-confetti out of the SSR bundle (Pitfall 3).
+        if (typeof window !== "undefined" && msg.winnerId === player.playerId) {
+          import("canvas-confetti")
+            .then(({ default: confetti }) => {
+              const reduce =
+                typeof window.matchMedia === "function" &&
+                window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+              confetti(
+                reduce
+                  ? {
+                      particleCount: 60,
+                      spread: 90,
+                      ticks: 100,
+                      origin: { y: 0.25 },
+                      colors: ["#F5D547", "#F5F5F7", "#F87171"],
+                    }
+                  : {
+                      particleCount: 180,
+                      spread: 90,
+                      startVelocity: 45,
+                      ticks: 220,
+                      origin: { y: 0.25 },
+                      colors: ["#F5D547", "#F5F5F7", "#F87171"],
+                    }
+              );
+            })
+            .catch(() => {
+              // Silent — EndScreen still renders if the module fails to load.
+            });
+        }
+        break;
+      }
+      case "gameReset": {
+        board = null;
+        markedCellIds = new Set();
+        playerMarks = {};
+        winner = null;
+        winningLine = null;
+        winningCellIds = [];
+        if (state) state = { ...state, phase: "lobby" };
+        break;
+      }
     }
   });
 
@@ -145,6 +198,18 @@ export function createRoomStore(code: string) {
       else next.add(cellId);
       markedCellIds = next;
       ws.send(JSON.stringify({ type: "markWord", cellId }));
+    },
+    get winner() {
+      return winner;
+    },
+    get winningLine() {
+      return winningLine;
+    },
+    get winningCellIds() {
+      return winningCellIds;
+    },
+    startNewGame() {
+      ws.send(JSON.stringify({ type: "startNewGame" }));
     },
   };
 }
