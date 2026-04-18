@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const confettiMock = vi.fn();
+vi.mock("canvas-confetti", () => ({ default: confettiMock }));
+
 // vi.hoisted runs before vi.mock factory, solving hoisting issues
 const { MockPartySocket, getLastInstance, resetInstance } = vi.hoisted(() => {
   let _lastInstance: any = null;
@@ -312,5 +315,201 @@ describe("createRoomStore", () => {
     const ref2 = store.markedCellIds;
 
     expect(ref1).not.toBe(ref2);
+  });
+});
+
+describe("createRoomStore — Phase 4 (win + reset)", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    resetInstance();
+    confettiMock.mockClear();
+  });
+
+  type WinLine = { type: "row" | "col" | "diagonal"; index: number };
+
+  function seedRoomState(ws: InstanceType<typeof MockPartySocket>, overrides: Record<string, unknown> = {}) {
+    const roomState = {
+      code: "ABC123",
+      phase: "playing",
+      hostId: "test-player-id",
+      players: [
+        { playerId: "test-player-id", displayName: "Tester", isHost: true, joinedAt: 1000 },
+        { playerId: "player-2", displayName: "Bob", isHost: false, joinedAt: 2000 },
+      ],
+      words: [
+        { wordId: "w1", text: "Synergy", submittedBy: "test-player-id" },
+      ],
+      usedPacks: ["corporate-classics"],
+      ...overrides,
+    };
+    ws.emit("message", { data: JSON.stringify({ type: "roomState", state: roomState }) });
+  }
+
+  function emitWinDeclared(
+    ws: InstanceType<typeof MockPartySocket>,
+    opts: { winnerId: string; winnerName?: string; line?: WinLine; cellIds?: string[] }
+  ) {
+    ws.emit("message", {
+      data: JSON.stringify({
+        type: "winDeclared",
+        winnerId: opts.winnerId,
+        winnerName: opts.winnerName ?? "Alice",
+        winningLine: opts.line ?? { type: "row", index: 0 },
+        winningCellIds: opts.cellIds ?? ["c1", "c2", "c3"],
+      }),
+    });
+  }
+
+  it("S1: winDeclared (self-winner) sets winner/winningLine/winningCellIds and flips phase to 'ended'", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+    seedRoomState(ws);
+
+    emitWinDeclared(ws, {
+      winnerId: "test-player-id",
+      winnerName: "Tester",
+      line: { type: "row", index: 2 },
+      cellIds: ["c7", "c8", "c9"],
+    });
+
+    expect(store.winner).toEqual({ playerId: "test-player-id", displayName: "Tester" });
+    expect(store.winningLine).toEqual({ type: "row", index: 2 });
+    expect(store.winningCellIds).toEqual(["c7", "c8", "c9"]);
+    expect(store.state!.phase).toBe("ended");
+  });
+
+  it("S2: winDeclared (other winner) sets all three fields but does NOT fire confetti", async () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+    seedRoomState(ws);
+
+    emitWinDeclared(ws, {
+      winnerId: "player-2",
+      winnerName: "Bob",
+      line: { type: "col", index: 1 },
+      cellIds: ["c2", "c5", "c8"],
+    });
+
+    expect(store.winner).toEqual({ playerId: "player-2", displayName: "Bob" });
+    expect(store.winningLine).toEqual({ type: "col", index: 1 });
+    expect(store.winningCellIds).toEqual(["c2", "c5", "c8"]);
+    expect(store.state!.phase).toBe("ended");
+
+    // Give the microtask queue a flush just in case — then assert still 0.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(confettiMock).not.toHaveBeenCalled();
+  });
+
+  it("S3: winDeclared (self-winner) fires confetti exactly once via dynamic import", async () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+    seedRoomState(ws);
+
+    emitWinDeclared(ws, { winnerId: "test-player-id", winnerName: "Tester" });
+
+    await vi.waitFor(() => {
+      expect(confettiMock).toHaveBeenCalledTimes(1);
+    });
+
+    const cfg = confettiMock.mock.calls[0][0] as { particleCount: number };
+    expect([60, 180]).toContain(cfg.particleCount);
+    expect(store.winner).toEqual({ playerId: "test-player-id", displayName: "Tester" });
+  });
+
+  it("S4: gameReset clears all 7 fields and flips phase to 'lobby'", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+    seedRoomState(ws);
+
+    // Pre-populate game-scoped fields
+    ws.emit("message", {
+      data: JSON.stringify({
+        type: "boardAssigned",
+        cells: [
+          { cellId: "c1", wordId: "w1", text: "Synergy", blank: false },
+          { cellId: "c2", wordId: null, text: null, blank: true },
+        ],
+      }),
+    });
+    store.toggleMark("c1");
+    ws.emit("message", {
+      data: JSON.stringify({ type: "wordMarked", playerId: "test-player-id", markCount: 1 }),
+    });
+    emitWinDeclared(ws, { winnerId: "player-2" });
+
+    expect(store.board).not.toBeNull();
+    expect(store.markedCellIds.size).toBeGreaterThan(0);
+    expect(Object.keys(store.playerMarks).length).toBeGreaterThan(0);
+    expect(store.winner).not.toBeNull();
+    expect(store.winningLine).not.toBeNull();
+    expect(store.winningCellIds.length).toBeGreaterThan(0);
+
+    ws.emit("message", { data: JSON.stringify({ type: "gameReset" }) });
+
+    expect(store.board).toBeNull();
+    expect(store.markedCellIds).toBeInstanceOf(Set);
+    expect(store.markedCellIds.size).toBe(0);
+    expect(Object.keys(store.playerMarks)).toHaveLength(0);
+    expect(store.winner).toBeNull();
+    expect(store.winningLine).toBeNull();
+    expect(store.winningCellIds).toEqual([]);
+    expect(store.state!.phase).toBe("lobby");
+  });
+
+  it("S5: gameReset does NOT touch words, players, hostId, usedPacks", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+    seedRoomState(ws);
+
+    const wordsBefore = store.words;
+    const playersBefore = store.state!.players;
+    const hostIdBefore = store.state!.hostId;
+    const usedPacksBefore = new Set(store.usedPacks);
+
+    ws.emit("message", { data: JSON.stringify({ type: "gameReset" }) });
+
+    expect(store.words).toEqual(wordsBefore);
+    expect(store.state!.players).toEqual(playersBefore);
+    expect(store.state!.hostId).toBe(hostIdBefore);
+    expect(Array.from(store.usedPacks)).toEqual(Array.from(usedPacksBefore));
+  });
+
+  it("S6: startNewGame() sends a { type: 'startNewGame' } frame over the WS", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+    ws.lastSent = null;
+
+    store.startNewGame();
+
+    expect(ws.lastSent).toBe(JSON.stringify({ type: "startNewGame" }));
+  });
+
+  it("S7: winner/winningLine/winningCellIds getters return current reactive values", () => {
+    const store = createRoomStore("ABC123");
+    const ws = getLastInstance()!;
+    ws.emit("open", {});
+    seedRoomState(ws);
+
+    expect(store.winner).toBeNull();
+    expect(store.winningLine).toBeNull();
+    expect(store.winningCellIds).toEqual([]);
+
+    emitWinDeclared(ws, {
+      winnerId: "player-2",
+      winnerName: "Bob",
+      line: { type: "diagonal", index: 1 },
+      cellIds: ["c3", "c5", "c7"],
+    });
+
+    expect(store.winner).toEqual({ playerId: "player-2", displayName: "Bob" });
+    expect(store.winningLine).toEqual({ type: "diagonal", index: 1 });
+    expect(store.winningCellIds).toEqual(["c3", "c5", "c7"]);
   });
 });
