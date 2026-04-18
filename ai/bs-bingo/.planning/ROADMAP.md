@@ -85,7 +85,7 @@ Plans:
   5. When the host triggers a new game, every player — without rejoining — lands back in the lobby with the roster and host role preserved, ready to submit words for a new round.
 **Plans**: 4 plans
 Plans:
-  - [ ] 04-01-PLAN.md — Protocol schema extension + pure detectWin util + win-line pulse keyframes (WIN-01/02/04/05)
+  - [x] 04-01-PLAN.md — Protocol schema extension + pure detectWin util + win-line pulse keyframes (WIN-01/02/04/05)
   - [ ] 04-02-PLAN.md — GameRoom DO: append win detection to markWord + startNewGame host-only reset handler (WIN-01/02/05)
   - [ ] 04-03-PLAN.md — Room store win/reset handlers + WinLineIcon + EndScreen components with confetti (WIN-03/04/05)
   - [ ] 04-04-PLAN.md — Wire EndScreen into /room/[code]/+page.svelte + two-browser e2e spec + human verify checkpoint (WIN-03/04/05)
