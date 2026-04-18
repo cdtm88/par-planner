@@ -83,7 +83,12 @@ Plans:
   3. Every non-winning player sees who won and which line completed, and the view is identical in content across all clients.
   4. The host sees a "Start new game" control on the end screen that is unavailable to non-hosts.
   5. When the host triggers a new game, every player — without rejoining — lands back in the lobby with the roster and host role preserved, ready to submit words for a new round.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+  - [ ] 04-01-PLAN.md — Protocol schema extension + pure detectWin util + win-line pulse keyframes (WIN-01/02/04/05)
+  - [ ] 04-02-PLAN.md — GameRoom DO: append win detection to markWord + startNewGame host-only reset handler (WIN-01/02/05)
+  - [ ] 04-03-PLAN.md — Room store win/reset handlers + WinLineIcon + EndScreen components with confetti (WIN-03/04/05)
+  - [ ] 04-04-PLAN.md — Wire EndScreen into /room/[code]/+page.svelte + two-browser e2e spec + human verify checkpoint (WIN-03/04/05)
 **UI hint**: yes
 
 ### Phase 5: Resilience & Mobile Hardening
@@ -109,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation — Transport, Room, Lobby, Presence | 0/5 | Not started | - |
 | 2. Lobby Gameplay — Word Submission & Start | 0/3 | Not started | - |
 | 3. Board Generation & Core Mark Loop | 0/4 | Not started | - |
-| 4. Win Detection, Announcement & Play-Again | 0/TBD | Not started | - |
+| 4. Win Detection, Announcement & Play-Again | 0/4 | Not started | - |
 | 5. Resilience & Mobile Hardening | 0/TBD | Not started | - |
 
 ---
