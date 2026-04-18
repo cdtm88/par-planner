@@ -343,6 +343,8 @@ export class GameRoom extends Server<Env> {
           .filter((c): c is BoardCell => !!c && !c.blank && c.text !== null)
           .map(c => c.text as string);
 
+        const gridSize: 3 | 4 | 5 = myBoard.length === 25 ? 5 : myBoard.length === 16 ? 4 : 3;
+
         this.broadcast(JSON.stringify({
           type: "winDeclared",
           winnerId: connState.playerId,
@@ -350,6 +352,7 @@ export class GameRoom extends Server<Env> {
           winningLine: win.winningLine,
           winningCellIds: win.winningCellIds,
           winningWords,
+          gridSize,
         }));
         return;
       }

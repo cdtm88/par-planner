@@ -34,6 +34,7 @@ export function createRoomStore(code: string) {
   let winningLine = $state<WinningLine | null>(null);
   let winningCellIds = $state<string[]>([]);
   let winningWords = $state<string[]>([]);
+  let winningGridSize = $state<3 | 4 | 5>(3);
 
   connection.status = "connecting";
 
@@ -110,6 +111,7 @@ export function createRoomStore(code: string) {
         winningLine = msg.winningLine;
         winningCellIds = msg.winningCellIds;
         winningWords = msg.winningWords;
+        winningGridSize = msg.gridSize;
         if (state) state = { ...state, phase: "ended" };
 
         // Fire confetti ONLY on the winner's client, ONLY in a browser.
@@ -153,6 +155,7 @@ export function createRoomStore(code: string) {
         winningLine = null;
         winningCellIds = [];
         winningWords = [];
+        winningGridSize = 3;
         if (state) state = { ...state, phase: "lobby" };
         break;
       }
@@ -213,6 +216,9 @@ export function createRoomStore(code: string) {
     },
     get winningWords() {
       return winningWords;
+    },
+    get winningGridSize() {
+      return winningGridSize;
     },
     startNewGame() {
       ws.send(JSON.stringify({ type: "startNewGame" }));

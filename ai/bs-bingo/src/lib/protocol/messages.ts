@@ -96,6 +96,7 @@ export const ServerMessage = v.variant("type", [
     winningLine: WinningLine,
     winningCellIds: v.array(v.string()),
     winningWords: v.array(v.string()),
+    gridSize: v.picklist([3, 4, 5]),
   }),
   // Phase 4 (WIN-05, D-09/D-10/D-14): broadcast when host resets to lobby.
   v.object({ type: v.literal("gameReset") }),

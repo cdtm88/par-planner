@@ -51,6 +51,7 @@
     winningLine: WinningLine | null;
     winningCellIds: string[];
     winningWords: string[];
+    winningGridSize: 3 | 4 | 5;
     startNewGame(): void;
   }
 
@@ -185,8 +186,6 @@
       </section>
     {:else if phase === "ended"}
       {#if store?.winner && store?.winningLine}
-        {@const boardLen = store?.board?.length ?? 9}
-        {@const gridSize = (boardLen === 25 ? 5 : boardLen === 16 ? 4 : 3) as 3 | 4 | 5}
         <EndScreen
           winner={store.winner}
           winningLine={store.winningLine}
@@ -196,7 +195,7 @@
           markedCellIds={store.markedCellIds}
           isHost={iAmHost}
           isWinner={store.winner.playerId === myPlayerId}
-          {gridSize}
+          gridSize={store.winningGridSize}
           onStartNewGame={() => store?.startNewGame()}
         />
       {/if}
