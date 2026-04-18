@@ -185,8 +185,8 @@
       </section>
     {:else if phase === "ended"}
       {#if store?.winner && store?.winningLine}
-        {@const gridTier = deriveGridTier(wordCount)}
-        {@const gridSize = (gridTier === "3x3" ? 3 : gridTier === "4x4" ? 4 : 5) as 3 | 4 | 5}
+        {@const boardLen = store?.board?.length ?? 9}
+        {@const gridSize = (boardLen === 25 ? 5 : boardLen === 16 ? 4 : 3) as 3 | 4 | 5}
         <EndScreen
           winner={store.winner}
           winningLine={store.winningLine}
