@@ -114,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation — Transport, Room, Lobby, Presence | 0/5 | Not started | - |
 | 2. Lobby Gameplay — Word Submission & Start | 0/3 | Not started | - |
 | 3. Board Generation & Core Mark Loop | 0/4 | Not started | - |
-| 4. Win Detection, Announcement & Play-Again | 4/4 | Complete | 2026-04-18 |
+| 4. Win Detection, Announcement & Play-Again | 4/4 | Complete    | 2026-04-18 |
 | 5. Resilience & Mobile Hardening | 0/TBD | Not started | - |
 
 ---
