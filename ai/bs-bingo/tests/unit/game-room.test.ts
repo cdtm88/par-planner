@@ -674,7 +674,10 @@ describe("GameRoom — board & marks (Phase 3)", () => {
   it("markWord on a valid word cell toggles mark and broadcasts wordMarked with minimal payload (BOAR-05, BOAR-06)", () => {
     const host = makeConn("c1");
     joinPlayer(host, "p1", "Alice");
-    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    // 9 words → 3x3 full, zero blanks. A single mark cannot complete any line
+    // (every line requires 3 marks), so the new Phase 4 win detection never
+    // fires here — isolating the Phase 3 wordMarked broadcast contract.
+    addWords(host, ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]);
     host._sent.length = 0;
     room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
 
@@ -694,7 +697,8 @@ describe("GameRoom — board & marks (Phase 3)", () => {
   it("markWord second time on same cell unmarks (toggle idempotency)", () => {
     const host = makeConn("c1");
     joinPlayer(host, "p1", "Alice");
-    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    // 9 words → 3x3 full, zero blanks. No single mark can win (requires 3).
+    addWords(host, ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]);
     host._sent.length = 0;
     room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
     const board = extractBoardFromConn(host);
@@ -777,7 +781,9 @@ describe("GameRoom — board & marks (Phase 3)", () => {
   it("wordMarked broadcast payload contains only type, playerId, markCount keys — nothing else", () => {
     const host = makeConn("c1");
     joinPlayer(host, "p1", "Alice");
-    addWords(host, ["W1", "W2", "W3", "W4", "W5"]);
+    // 9 words → 3x3 full, zero blanks. Avoids the Phase-4 single-mark-via-blanks
+    // edge case (Pitfall 5) so the first broadcast is strictly wordMarked.
+    addWords(host, ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]);
     host._sent.length = 0;
     room.onMessage(host as never, JSON.stringify({ type: "startGame" }));
     const board = extractBoardFromConn(host);
@@ -992,43 +998,27 @@ describe("GameRoom — win & reset (Phase 4)", () => {
     }
   });
 
-  it("W4: on win, #phase becomes 'ended' AND storage.put(phase, 'ended') is called BEFORE winDeclared broadcast", () => {
+  it("W4: on win, #phase becomes 'ended' AND storage.put(phase, 'ended') is called when winDeclared broadcasts", () => {
     const { host, board } = setupGameWithWinnableBoard();
     const broadcast = getBroadcast();
     const storagePut = (room as unknown as { ctx: { storage: { put: ReturnType<typeof vi.fn> } } }).ctx.storage.put;
 
-    // Clear call history right before the final mark to capture ordering cleanly.
-    const wordCells = board.cells.filter((c) => !c.blank);
-    for (let i = 0; i < wordCells.length - 1; i++) {
-      room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: wordCells[i].cellId }));
-    }
-    // Last mark will complete a line (best-effort — guaranteed within the
-    // finite mark sequence for a 3x3 with 5 words).
-    // Record snapshot indices for ordering checks.
-    const putCallsBefore = storagePut.mock.calls.length;
-    const broadcastCallsBefore = broadcast.mock.calls.length;
+    // Mark until a win is declared. `markUntilWin` only marks each cell once,
+    // so no toggle-unmark happens mid-sequence.
+    const result = markUntilWin(host, board);
+    expect(result, "should have detected a win").not.toBeNull();
 
-    // Try remaining cells until a win is declared.
-    for (const cell of wordCells) {
-      room.onMessage(host as never, JSON.stringify({ type: "markWord", cellId: cell.cellId }));
-      const newBroadcasts = broadcast.mock.calls.slice(broadcastCallsBefore).map((args) => JSON.parse(args[0] as string));
-      if (newBroadcasts.some((m) => m.type === "winDeclared")) break;
-    }
-
-    const allNewPuts = storagePut.mock.calls.slice(putCallsBefore);
-    const allNewBroadcasts = broadcast.mock.calls.slice(broadcastCallsBefore);
-
-    // Find the index of the phase="ended" put and the winDeclared broadcast.
-    const phaseEndedPutIndex = allNewPuts.findIndex(
+    // After the win, storage.put must have been called with ("phase", "ended").
+    const phaseEndedPut = storagePut.mock.calls.find(
       (args) => args[0] === "phase" && args[1] === "ended"
     );
-    const winBroadcastIndex = allNewBroadcasts.findIndex(
-      (args) => {
-        try { return JSON.parse(args[0] as string).type === "winDeclared"; } catch { return false; }
-      }
-    );
-    expect(phaseEndedPutIndex, "storage.put(phase, 'ended') must be called").toBeGreaterThanOrEqual(0);
-    expect(winBroadcastIndex, "winDeclared broadcast must fire").toBeGreaterThanOrEqual(0);
+    expect(phaseEndedPut, "storage.put('phase', 'ended') must be called on win").toBeDefined();
+
+    // And winDeclared must have fired.
+    const winBroadcast = broadcast.mock.calls.find((args) => {
+      try { return JSON.parse(args[0] as string).type === "winDeclared"; } catch { return false; }
+    });
+    expect(winBroadcast, "winDeclared broadcast must fire").toBeDefined();
   });
 
   it("W5: after phase='ended', subsequent markWord is silently dropped (no further broadcasts)", () => {

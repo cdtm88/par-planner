@@ -28,6 +28,7 @@ import {
 import { STARTER_PACKS } from "../src/lib/util/starterPacks.js";
 import { shuffle } from "../src/lib/util/shuffle.js";
 import { deriveGridTier } from "../src/lib/util/gridTier.js";
+import { detectWin } from "../src/lib/util/winLine.js";
 import { nanoid } from "nanoid";
 
 // 30 minutes idle before the room is reaped (RESEARCH.md §Open Question 2, A1).
@@ -38,7 +39,7 @@ const K_ACTIVE = "active";
 const K_HOST_ID = "hostId";
 const K_PLAYERS = "players";      // Player[]
 const K_WORDS = "words";          // WordEntry[]
-const K_PHASE = "phase";          // "lobby" | "playing"
+const K_PHASE = "phase";          // "lobby" | "playing" | "ended"
 const K_USED_PACKS = "usedPacks"; // string[]
 const K_BOARDS = "boards";        // Array<[playerId, BoardCell[]]>
 const K_MARKS = "marks";          // Array<[playerId, string[]]>
@@ -57,7 +58,7 @@ export class GameRoom extends Server<Env> {
   // This distinguishes "room was formally created" from "DO was just instantiated".
   #active = false;
   #words = new Map<string, WordEntry>();
-  #phase: "lobby" | "playing" = "lobby";
+  #phase: "lobby" | "playing" | "ended" = "lobby";
   #usedPacks = new Set<string>();
   #boards = new Map<string, BoardCell[]>();   // playerId → that player's cells
   #marks = new Map<string, Set<string>>();    // playerId → set of marked cellIds
@@ -80,7 +81,7 @@ export class GameRoom extends Server<Env> {
       this.ctx.storage.get<string | null>(K_HOST_ID),
       this.ctx.storage.get<Player[]>(K_PLAYERS),
       this.ctx.storage.get<WordEntry[]>(K_WORDS),
-      this.ctx.storage.get<"lobby" | "playing">(K_PHASE),
+      this.ctx.storage.get<"lobby" | "playing" | "ended">(K_PHASE),
       this.ctx.storage.get<string[]>(K_USED_PACKS),
       this.ctx.storage.get<Array<[string, BoardCell[]]>>(K_BOARDS),
       this.ctx.storage.get<Array<[string, string[]]>>(K_MARKS),
@@ -322,6 +323,27 @@ export class GameRoom extends Server<Env> {
           type: "wordMarked",
           playerId: connState.playerId,
           markCount: myMarks.size,
+        }));
+
+        // Phase 4: server-authoritative win detection (WIN-01, WIN-02).
+        // Runs AFTER #persistMarks() + wordMarked broadcast so peers see the
+        // final badge count before the announcement and a hibernation mid-flow
+        // cannot lose the mark (Pitfall 1 / Pitfall 2).
+        const win = detectWin(myBoard, myMarks);
+        if (!win) return;
+
+        this.#phase = "ended";
+        this.#persistPhase();
+
+        const winnerPlayer = this.#players.get(connState.playerId);
+        const winnerName = winnerPlayer?.displayName ?? "Someone";
+
+        this.broadcast(JSON.stringify({
+          type: "winDeclared",
+          winnerId: connState.playerId,
+          winnerName,
+          winningLine: win.winningLine,
+          winningCellIds: win.winningCellIds,
         }));
         return;
       }
