@@ -26,9 +26,17 @@ export const BoardCell = v.object({
 });
 export type BoardCell = v.InferOutput<typeof BoardCell>;
 
+// --- Phase 4: WinningLine object (WIN-02, CONTEXT D-06/D-14) ---
+// Broadcast within winDeclared; also used client-side by WinLineIcon and EndScreen.
+export const WinningLine = v.object({
+  type: v.picklist(["row", "col", "diagonal"]),
+  index: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+export type WinningLine = v.InferOutput<typeof WinningLine>;
+
 export const RoomState = v.object({
   code: v.string(),
-  phase: v.union([v.literal("lobby"), v.literal("playing")]),
+  phase: v.union([v.literal("lobby"), v.literal("playing"), v.literal("ended")]),
   hostId: v.nullable(v.string()),
   players: v.array(Player),
   words: v.array(WordEntry),
@@ -60,6 +68,8 @@ export const ClientMessage = v.variant("type", [
     type: v.literal("markWord"),
     cellId: v.pipe(v.string(), v.minLength(1)),
   }),
+  // Phase 4: host-only request to return room to lobby after a win (D-09/D-13)
+  v.object({ type: v.literal("startNewGame") }),
 ]);
 export type ClientMessage = v.InferOutput<typeof ClientMessage>;
 
@@ -78,6 +88,16 @@ export const ServerMessage = v.variant("type", [
     playerId: v.pipe(v.string(), v.minLength(1)),
     markCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
   }),
+  // Phase 4 (WIN-02, D-14): broadcast to every player when a line completes.
+  v.object({
+    type: v.literal("winDeclared"),
+    winnerId: v.pipe(v.string(), v.minLength(1)),
+    winnerName: v.pipe(v.string(), v.minLength(1)),
+    winningLine: WinningLine,
+    winningCellIds: v.array(v.string()),
+  }),
+  // Phase 4 (WIN-05, D-09/D-10/D-14): broadcast when host resets to lobby.
+  v.object({ type: v.literal("gameReset") }),
 ]);
 export type ServerMessage = v.InferOutput<typeof ServerMessage>;
 
