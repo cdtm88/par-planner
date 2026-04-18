@@ -27,3 +27,20 @@
 @media (prefers-reduced-motion: reduce) {
   .shake { animation: none; }
 }
+
+@keyframes winLinePulse {
+  0%, 100% { box-shadow: 0 0 0 2px #F5D547, 0 0 8px  #F5D547; }
+  50%      { box-shadow: 0 0 0 2px #F5D547, 0 0 16px #F5D547; }
+}
+
+[data-win-line="true"] > button {
+  animation: winLinePulse 1200ms ease-in-out infinite;
+  border-radius: 0.5rem; /* match BoardCell's rounded-lg */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-win-line="true"] > button {
+    animation: none;
+    box-shadow: 0 0 0 2px #F5D547, 0 0 12px #F5D547;
+  }
+}
