@@ -48,6 +48,7 @@
     winner: { playerId: string; displayName: string } | null;
     winningLine: WinningLine | null;
     winningCellIds: string[];
+    winningWords: string[];
     startNewGame(): void;
   }
 
