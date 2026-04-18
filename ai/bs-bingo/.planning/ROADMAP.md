@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Foundation — Transport, Room, Lobby, Presence** — Anyone can create a room, share a code or link, and see who has joined in real time.
 - [ ] **Phase 2: Lobby Gameplay — Word Submission & Start** — Players can seed the word pool, the grid auto-sizes, and the host can start the game.
 - [ ] **Phase 3: Board Generation & Core Mark Loop** — Every player gets a private, fairly shuffled board and can mark words that other players see count updates for.
-- [ ] **Phase 4: Win Detection, Announcement & Play-Again** — The server declares the winner, everyone sees the celebration, and the host can rematch with the same lobby.
+- [x] **Phase 4: Win Detection, Announcement & Play-Again** — The server declares the winner, everyone sees the celebration, and the host can rematch with the same lobby.
 - [ ] **Phase 5: Resilience & Mobile Hardening** — Sessions survive phone locks, network drops, host disconnects, and tab-away meetings.
 
 ## Phase Details
@@ -88,7 +88,7 @@ Plans:
   - [x] 04-01-PLAN.md — Protocol schema extension + pure detectWin util + win-line pulse keyframes (WIN-01/02/04/05)
   - [x] 04-02-PLAN.md — GameRoom DO: append win detection to markWord + startNewGame host-only reset handler (WIN-01/02/05)
   - [x] 04-03-PLAN.md — Room store win/reset handlers + WinLineIcon + EndScreen components with confetti (WIN-03/04/05)
-  - [ ] 04-04-PLAN.md — Wire EndScreen into /room/[code]/+page.svelte + two-browser e2e spec + human verify checkpoint (WIN-03/04/05)
+  - [x] 04-04-PLAN.md — Wire EndScreen into /room/[code]/+page.svelte + two-browser e2e spec + human verify checkpoint (WIN-03/04/05)
 **UI hint**: yes
 
 ### Phase 5: Resilience & Mobile Hardening
@@ -114,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation — Transport, Room, Lobby, Presence | 0/5 | Not started | - |
 | 2. Lobby Gameplay — Word Submission & Start | 0/3 | Not started | - |
 | 3. Board Generation & Core Mark Loop | 0/4 | Not started | - |
-| 4. Win Detection, Announcement & Play-Again | 0/4 | Not started | - |
+| 4. Win Detection, Announcement & Play-Again | 4/4 | Complete | 2026-04-18 |
 | 5. Resilience & Mobile Hardening | 0/TBD | Not started | - |
 
 ---

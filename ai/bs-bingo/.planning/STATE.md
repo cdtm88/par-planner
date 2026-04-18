@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-04-18T06:31:52.170Z"
-last_activity: 2026-04-18 -- Phase 04 execution started
+stopped_at: Phase 4 complete — ready for Phase 5 planning
+last_updated: "2026-04-18T11:42:00.000Z"
+last_activity: 2026-04-18 -- Phase 04 Plan 04 complete (EndScreen wired + e2e + human verify)
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 12
-  percent: 75
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 04 (win-detection-announcement-play-again) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 04
-Last activity: 2026-04-18 -- Phase 04 execution started
+Phase: 04 (win-detection-announcement-play-again) — COMPLETE
+Plan: 4 of 4 (all complete)
+Status: Phase 04 complete — ready for Phase 5 planning
+Last activity: 2026-04-18 -- Phase 04 Plan 04 complete (EndScreen wired + e2e + human verify)
 
-Progress: [██████░░░░] 60%
+Progress: [██████████] 100% of mapped phases 1-4; Phase 5 plans TBD
 
 ## Performance Metrics
 
@@ -71,6 +71,8 @@ Recent decisions affecting current work:
 - Phase 1: Browser-only + anonymous sessions confirmed working on mobile
 - Phase 3: DO hibernation requires persist+rehydrate for all in-memory state (learned from start-game bug)
 - Phase 3: `toggleMark` reassigns `new Set(...)` — in-place `.add()/.delete()` doesn't trigger Svelte 5 runes reactivity
+- Phase 4 Plan 04: Dropped full frozen board from EndScreen after human-verify — jarring resize. Replaced with shared WinLineIcon + gold winning-word chips on both winner/non-winner views.
+- Phase 4 Plan 04: Server enriches winDeclared with `winningWords: string[]` — non-winners cannot derive from local board (BOAR-03 private layouts), so the server computes from the winner's BoardCell[] at broadcast time.
 
 ### Pending Todos
 
@@ -90,6 +92,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-18T05:54:14.708Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume file: .planning/phases/04-win-detection-announcement-play-again/04-UI-SPEC.md
+Last session: 2026-04-18T11:42:00.000Z
+Stopped at: Phase 4 complete — 04-04-SUMMARY.md written, ROADMAP updated
+Resume file: .planning/ROADMAP.md (next: Phase 5 planning — resilience & mobile hardening)
